@@ -2,6 +2,28 @@
   "siteName": "Ashley Carranza",
   "domain": "https://ashleycarranza.com",
   "contactEmail": "ashleyjcarranza@gmail.com",
+  "navigation": [
+    {
+      "label": "About",
+      "href": "/about/"
+    },
+    {
+      "label": "My Work",
+      "href": "/my-work/"
+    },
+    {
+      "label": "Speaking & Events",
+      "href": "/speaking-features/"
+    },
+    {
+      "label": "Contact",
+      "href": "/contact/"
+    }
+  ],
+  "home": {
+    "featuredProducts": 2,
+    "featuredEvents": 2
+  },
   "social": {
     "instagram": "",
     "facebook": "",

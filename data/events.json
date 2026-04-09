@@ -1,5 +1,5 @@
 {
-  "timezone": "PST",
+  "timezone": "America/Los_Angeles",
   "events": [
     {
       "id": "evt-upcoming-001",
@@ -7,10 +7,10 @@
       "date": "2026-06-18",
       "time": "10:00 AM PST",
       "city": "Los Angeles, CA",
-      "venue": "Placeholder Convention Center",
-      "venueAddress": "123 Main St, Los Angeles, CA",
-      "venueMapUrl": "https://maps.google.com/?q=123+Main+St+Los+Angeles+CA",
-      "talkTitle": "Placeholder Talk Title",
+      "venue": "Los Angeles Convention Center",
+      "venueAddress": "1201 S Figueroa St, Los Angeles, CA",
+      "venueMapUrl": "https://maps.google.com/?q=Los+Angeles+Convention+Center",
+      "talkTitle": "Raising Readers in a Digital World",
       "topic": "Education"
     },
     {
@@ -19,10 +19,10 @@
       "date": "2026-08-10",
       "time": "1:30 PM PST",
       "city": "San Diego, CA",
-      "venue": "Placeholder High School",
-      "venueAddress": "500 School Rd, San Diego, CA",
-      "venueMapUrl": "https://maps.google.com/?q=500+School+Rd+San+Diego+CA",
-      "talkTitle": "Empowering Learners",
+      "venue": "San Diego Unified School District",
+      "venueAddress": "4100 Normal St, San Diego, CA",
+      "venueMapUrl": "https://maps.google.com/?q=San+Diego+Unified+School+District",
+      "talkTitle": "Empowering Young Learners Through Story",
       "topic": "Student Growth"
     },
     {
@@ -31,9 +31,9 @@
       "date": "2025-11-03",
       "time": "9:00 AM PST",
       "city": "Phoenix, AZ",
-      "venue": "Placeholder Education Summit",
-      "venueAddress": "88 Summit Blvd, Phoenix, AZ",
-      "venueMapUrl": "https://maps.google.com/?q=88+Summit+Blvd+Phoenix+AZ",
+      "venue": "Arizona Education Summit",
+      "venueAddress": "100 N 3rd Ave, Phoenix, AZ",
+      "venueMapUrl": "https://maps.google.com/?q=Arizona+Education+Summit+Phoenix",
       "talkTitle": "Building Confidence in Young Readers",
       "topic": "Literacy"
     }

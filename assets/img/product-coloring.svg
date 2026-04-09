@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Coloring book placeholder</title>
+  <desc id="desc">A placeholder illustration for a coloring book product.</desc>
+  <rect width="1200" height="900" rx="8" fill="#F2F5F0" />
+  <rect x="260" y="160" width="410" height="560" rx="6" fill="#FFFFFF" stroke="#D4E2CE" stroke-width="8" />
+  <circle cx="465" cy="350" r="100" fill="#E8F0E4" stroke="#2D5016" stroke-width="6" opacity="0.4" />
+  <path d="M465 256c30 0 58 15 73 39 19 31 18 74-4 103-24 33-71 53-119 38-48-14-83-59-75-111 8-43 44-69 79-69" fill="none" stroke="#2D5016" stroke-width="10" stroke-linecap="round" opacity="0.2" />
+  <path d="M390 540c32-34 74-52 126-52 55 0 101 17 138 52" fill="none" stroke="#2D5016" stroke-width="10" stroke-linecap="round" opacity="0.2" />
+  <text x="780" y="420" font-size="52" font-family="Georgia, serif" font-weight="700" fill="#1A1A1A" opacity="0.12">Coloring</text>
+  <text x="780" y="480" font-size="52" font-family="Georgia, serif" font-weight="700" fill="#1A1A1A" opacity="0.12">Book</text>
+</svg>

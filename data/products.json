@@ -2,19 +2,17 @@
   "products": [
     {
       "id": "book-001",
-      "title": "Placeholder Book Title",
-      "description": "Replace this with your real book summary.",
+      "title": "The Courage to Grow",
+      "description": "A heartfelt story about a young girl who discovers that the bravest thing she can do is be herself.",
       "category": "Books",
-      "image": "/images/products/placeholder-book-1.jpg",
       "amazonUrl": "https://www.amazon.com/",
       "tptUrl": "https://www.teacherspayteachers.com/"
     },
     {
       "id": "coloring-001",
-      "title": "Placeholder Kids Coloring Book",
-      "description": "Replace this with your real coloring book summary.",
+      "title": "Colors of the Classroom",
+      "description": "An interactive coloring book that brings learning to life through creativity and imagination.",
       "category": "Coloring Books for Kids",
-      "image": "/images/products/placeholder-coloring-1.jpg",
       "amazonUrl": "https://www.amazon.com/"
     }
   ]

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Book cover placeholder</title>
+  <desc id="desc">A placeholder illustration for a featured book.</desc>
+  <rect width="1200" height="900" rx="8" fill="#F2F5F0" />
+  <rect x="305" y="140" width="430" height="580" rx="6" fill="#FFFFFF" stroke="#D4E2CE" stroke-width="8" />
+  <rect x="340" y="195" width="28" height="490" rx="14" fill="#2D5016" opacity="0.2" />
+  <rect x="405" y="280" width="260" height="20" rx="4" fill="#D4E2CE" />
+  <rect x="405" y="320" width="200" height="14" rx="4" fill="#E8F0E4" />
+  <rect x="405" y="350" width="220" height="14" rx="4" fill="#E8F0E4" />
+  <rect x="405" y="380" width="180" height="14" rx="4" fill="#E8F0E4" />
+  <text x="820" y="420" font-size="64" font-family="Georgia, serif" font-weight="700" fill="#1A1A1A" opacity="0.12">Book</text>
+</svg>

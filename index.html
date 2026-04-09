@@ -6,69 +6,114 @@
     <title>Ashley Carranza | Author & Speaker</title>
     <meta name="description" content="Official website of Ashley Carranza. Books, speaking events, conference appearances, and media links." />
     <meta name="keywords" content="Ashley Carranza, author, speaker, books, coloring books, conferences" />
+    <meta name="theme-color" content="#FAFAF8" />
     <link rel="canonical" href="https://ashleycarranza.com/" />
+    <meta property="og:site_name" content="Ashley Carranza" />
     <meta property="og:title" content="Ashley Carranza | Author & Speaker" />
     <meta property="og:description" content="Books, speaking events, conference appearances, and media links." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://ashleycarranza.com/" />
     <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": "Ashley Carranza",
+        "jobTitle": "Author and Speaker",
+        "url": "https://ashleycarranza.com",
+        "email": "mailto:ashleyjcarranza@gmail.com",
+        "description": "Official website of Ashley Carranza featuring books, speaking appearances, and media contact details."
+      }
+    </script>
+    <link rel="icon" href="./assets/img/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
-    <link rel="stylesheet" href="/assets/css/styles.css" />
+    <link rel="stylesheet" href="./assets/css/styles.css" />
   </head>
-  <body>
+  <body data-page="home">
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <div id="site-nav"></div>
 
-    <main class="container py-5 page-wrap">
-      <section class="hero-shell p-5 mb-5" data-aos="fade-up">
-        <div class="row align-items-center g-4">
+    <main id="main-content" class="container page-wrap">
+
+      <!-- Hero -->
+      <section class="hero" data-aos="fade-up">
+        <div class="row align-items-center g-4 g-lg-5">
           <div class="col-lg-7">
-            <p class="kicker mb-2">Author · Speaker · Educator</p>
-            <h1 class="display-5 fw-bold mb-3">Your hub for books, speaking, and conference appearances</h1>
-            <p class="lead text-secondary mb-4">Welcome to the official website of Ashley Carranza. Explore current books, upcoming speaking engagements, and where Ashley will be appearing next.</p>
+            <h1 class="mb-3">Ashley Carranza</h1>
+            <p class="lead mb-4">Author, speaker, and educator — writing stories that help children find their voice and discover the joy of reading.</p>
             <div class="d-flex flex-wrap gap-2">
-              <a class="btn ac-btn" href="/my-work"><i class="bi bi-book me-1"></i> Explore My Work</a>
-              <a class="btn btn-outline-secondary" href="/speaking-features"><i class="bi bi-mic me-1"></i> Speaking Schedule</a>
+              <a class="ac-btn" href="./my-work/"><i class="bi bi-book me-1"></i> Browse Books</a>
+              <a class="btn-outline" href="./speaking-features/"><i class="bi bi-mic me-1"></i> Speaking & Events</a>
             </div>
           </div>
-          <div class="col-lg-5" data-aos="zoom-in" data-aos-delay="120">
-            <img class="profile-placeholder" src="/images/about/profile-placeholder.jpg" alt="Ashley Carranza placeholder portrait" loading="lazy" />
+          <div class="col-lg-5 text-center" data-aos="fade-up" data-aos-delay="100">
+            <img class="hero-portrait mx-auto" src="./assets/img/ashley-portrait.svg" alt="Ashley Carranza" loading="lazy" />
           </div>
         </div>
       </section>
 
-      <section class="row g-4">
-        <div class="col-md-4" data-aos="fade-up" data-aos-delay="50">
-          <article class="soft-card bg-white p-4 h-100 position-relative">
-            <h2 class="h4">About</h2>
-            <p class="text-secondary">Learn Ashley's background, mission, and speaking focus areas.</p>
-            <a href="/about" class="stretched-link text-decoration-none">Read bio</a>
-          </article>
+      <!-- Quick navigation -->
+      <section class="row g-4 mb-5 mt-4" data-aos="fade-up">
+        <div class="col-md-4">
+          <a href="./about/" class="text-decoration-none d-block nav-block h-100">
+            <h2>About</h2>
+            <p>The story behind the books — from the classroom to the page.</p>
+            <span class="text-decoration-underline link-accent">Read more</span>
+          </a>
         </div>
-        <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
-          <article class="soft-card bg-white p-4 h-100 position-relative">
-            <h2 class="h4">My Work</h2>
-            <p class="text-secondary">Browse books and resources with direct buy links.</p>
-            <a href="/my-work" class="stretched-link text-decoration-none">View products</a>
-          </article>
+        <div class="col-md-4">
+          <a href="./my-work/" class="text-decoration-none d-block nav-block h-100">
+            <h2>My Work</h2>
+            <p>Children's books and educational resources for young readers and teachers.</p>
+            <span class="text-decoration-underline link-accent">View books</span>
+          </a>
         </div>
-        <div class="col-md-4" data-aos="fade-up" data-aos-delay="150">
-          <article class="soft-card bg-white p-4 h-100 position-relative">
-            <h2 class="h4">Speaking & Features</h2>
-            <p class="text-secondary">See upcoming conferences, engagements, and past appearances.</p>
-            <a href="/speaking-features" class="stretched-link text-decoration-none">View events</a>
-          </article>
+        <div class="col-md-4">
+          <a href="./speaking-features/" class="text-decoration-none d-block nav-block h-100">
+            <h2>Speaking & Features</h2>
+            <p>Conferences, school visits, and workshops across the country.</p>
+            <span class="text-decoration-underline link-accent">See events</span>
+          </a>
         </div>
       </section>
+
+      <!-- Featured work + Upcoming events -->
+      <section class="section-divider">
+        <div class="row g-5 align-items-start">
+          <div class="col-lg-6" data-aos="fade-up">
+            <h2 class="section-title mb-3">Latest Books</h2>
+            <div id="home-work-preview" class="row g-4" aria-live="polite"></div>
+          </div>
+          <div class="col-lg-6" data-aos="fade-up" data-aos-delay="80">
+            <h2 class="section-title mb-3">Upcoming Events</h2>
+            <div id="home-events-preview" class="row g-4" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Contact CTA -->
+      <section class="section-divider mb-5" data-aos="fade-up">
+        <div class="row g-4 align-items-center">
+          <div class="col-lg-8">
+            <h2 class="section-title mb-2">Let's Work Together</h2>
+            <p class="text-muted-ui mb-0">Available for speaking engagements, school visits, book events, and collaborations.</p>
+          </div>
+          <div class="col-lg-4 text-lg-end">
+            <a class="ac-btn btn-lg" href="./contact/"><i class="bi bi-envelope me-1"></i> Get in Touch</a>
+          </div>
+        </div>
+      </section>
+
     </main>
 
     <div id="site-footer"></div>
     <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     <script defer src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-    <script defer src="/assets/js/main.js"></script>
+    <script type="module" src="./assets/js/main.js"></script>
   </body>
 </html>

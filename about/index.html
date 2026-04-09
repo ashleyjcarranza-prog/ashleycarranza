@@ -5,43 +5,77 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>About | Ashley Carranza</title>
     <meta name="description" content="About Ashley Carranza, author and speaker." />
+    <meta name="theme-color" content="#FAFAF8" />
     <link rel="canonical" href="https://ashleycarranza.com/about" />
+    <meta property="og:title" content="About | Ashley Carranza" />
+    <meta property="og:description" content="Learn more about Ashley Carranza's background, mission, and speaking focus areas." />
+    <meta property="og:type" content="article" />
+    <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
-    <link rel="stylesheet" href="/assets/css/styles.css" />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
   </head>
-  <body>
+  <body data-page="about">
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <div id="site-nav"></div>
 
-    <main class="container py-5 page-wrap">
-      <p class="kicker mb-2" data-aos="fade-up">About</p>
-      <h1 class="section-title mb-4" data-aos="fade-up" data-aos-delay="80">Meet Ashley Carranza</h1>
-      <div class="row g-4 align-items-stretch">
-        <div class="col-lg-4" data-aos="zoom-in" data-aos-delay="120">
-          <img class="profile-placeholder h-100" src="/images/about/profile-placeholder.jpg" alt="Ashley Carranza profile placeholder" loading="lazy" />
+    <main id="main-content" class="container py-5 page-wrap">
+      <h1 class="section-title mb-4" data-aos="fade-up">About Ashley</h1>
+
+      <div class="row g-5 align-items-start mb-5">
+        <div class="col-lg-4" data-aos="fade-up" data-aos-delay="80">
+          <img class="profile-placeholder w-100" src="../assets/img/ashley-portrait.svg" alt="Ashley Carranza" loading="lazy" />
         </div>
-        <div class="col-lg-8" data-aos="fade-left" data-aos-delay="160">
-          <article class="soft-card bg-white p-4 h-100">
-            <p>Ashley Carranza is an author and speaker focused on educational empowerment, creativity, and audience-centered learning experiences.</p>
-            <p>This page is intentionally built with easy-to-swap placeholder content. Replace this copy with your full biography, achievements, media features, and speaking highlights.</p>
-            <h2 class="h5 mt-4">Suggested profile highlights</h2>
-            <ul class="list-clean">
-              <li>Author background and mission.</li>
-              <li>Speaking topics and ideal audiences.</li>
-              <li>Conference and media feature credentials.</li>
-            </ul>
-          </article>
+        <div class="col-lg-8" data-aos="fade-up" data-aos-delay="120">
+          <div class="bio-text prose">
+            <p>Ashley Carranza is an author and educator whose work is rooted in a simple belief: every child deserves stories that make them feel seen, capable, and inspired. Her books blend creativity with real classroom experience, giving young readers the tools to build confidence and fall in love with learning.</p>
+            <p>Before becoming a published author, Ashley spent years in the classroom watching firsthand how the right story at the right moment could change a student's entire outlook. That experience shapes everything she writes — from picture books that celebrate curiosity to coloring books designed to make learning feel like play.</p>
+            <p>Today, Ashley splits her time between writing, speaking at education conferences, and visiting schools where she works directly with students and teachers. She is passionate about literacy, creativity, and making sure every young reader knows their story matters.</p>
+          </div>
         </div>
       </div>
+
+      <!-- Speaking Topics -->
+      <section class="section-divider" data-aos="fade-up">
+        <h2 class="section-title mb-3">What I Speak About</h2>
+        <p class="text-muted-ui section-copy mb-4">Ashley speaks at conferences, schools, and community events on topics close to her heart.</p>
+        <div class="row g-4">
+          <div class="col-md-6">
+            <div class="topic-card h-100">
+              <h3 class="h5 mb-2">Literacy & Confidence</h3>
+              <p class="text-muted-ui mb-0">How the right books at the right time can transform a child's relationship with reading and with themselves.</p>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="topic-card h-100">
+              <h3 class="h5 mb-2">Creativity in the Classroom</h3>
+              <p class="text-muted-ui mb-0">Practical strategies for weaving storytelling and creative expression into everyday learning.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section class="section-divider mb-5" data-aos="fade-up">
+        <div class="row g-4 align-items-center">
+          <div class="col-lg-8">
+            <h2 class="section-title mb-2">Book Ashley</h2>
+            <p class="text-muted-ui mb-0">Available for keynotes, workshops, school visits, and media appearances.</p>
+          </div>
+          <div class="col-lg-4 text-lg-end">
+            <a class="ac-btn btn-lg" href="../contact/"><i class="bi bi-envelope me-1"></i> Get in Touch</a>
+          </div>
+        </div>
+      </section>
     </main>
 
     <div id="site-footer"></div>
     <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     <script defer src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-    <script defer src="/assets/js/main.js"></script>
+    <script type="module" src="../assets/js/main.js"></script>
   </body>
 </html>
