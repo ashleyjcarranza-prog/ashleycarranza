@@ -1,4 +1,4 @@
-# Ashley Carranza Website
+# Ashley Jae Carranza Website
 
 Static HTML/CSS/JS site with clean routing and JSON-driven content.
 

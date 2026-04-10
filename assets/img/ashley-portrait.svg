@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1125" role="img" aria-labelledby="title desc">
-  <title id="title">Ashley Carranza portrait placeholder</title>
-  <desc id="desc">A placeholder portrait for Ashley Carranza.</desc>
+  <title id="title">Ashley Jae Carranza portrait artwork</title>
+  <desc id="desc">Decorative portrait artwork for Ashley Jae Carranza.</desc>
   <rect width="900" height="1125" fill="#E8F0E4" rx="12" />
   <rect x="182" y="164" width="536" height="620" rx="268" fill="#D4E2CE" opacity="0.7" />
   <circle cx="450" cy="342" r="116" fill="#C2D4BA" />
   <path d="M250 684c22-172 117-256 200-256s178 84 200 256" fill="#2D5016" opacity="0.15" />
   <path d="M304 684c20-98 78-150 146-150s126 52 146 150" fill="#FAFAF8" opacity="0.9" />
   <text x="450" y="484" text-anchor="middle" font-size="138" font-family="Georgia, serif" font-weight="700" fill="#1A1A1A" opacity="0.2">AC</text>
-  <text x="90" y="918" font-size="72" font-family="Georgia, serif" font-weight="700" fill="#1A1A1A">Ashley Carranza</text>
+  <text x="90" y="918" font-size="72" font-family="Georgia, serif" font-weight="700" fill="#1A1A1A">Ashley Jae Carranza</text>
   <text x="90" y="968" font-size="26" font-family="Arial, sans-serif" letter-spacing="3" fill="#6B6B6B">AUTHOR &amp; EDUCATOR</text>
   <line x1="90" y1="1010" x2="810" y2="1010" stroke="#2D5016" stroke-width="3" stroke-linecap="round" opacity="0.4" />
 </svg>

@@ -1,13 +1,17 @@
 import { getSiteData } from './core/site.js';
 import { buildFooter, buildNav, initAnimations } from './core/ui.js';
+import { initAboutPage } from './pages/about.js';
 import { initEventsPage } from './pages/events.js';
 import { initHomePage } from './pages/home.js';
+import { initNewsPage } from './pages/news.js';
 import { initProductsPage } from './pages/products.js';
 
 const pageInitializers = {
   home: initHomePage,
   products: initProductsPage,
-  events: initEventsPage
+  events: initEventsPage,
+  about: initAboutPage,
+  news: initNewsPage
 };
 
 document.addEventListener('DOMContentLoaded', async () => {

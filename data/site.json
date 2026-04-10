@@ -1,28 +1,43 @@
 {
-  "siteName": "Ashley Carranza",
+  "siteName": "Ashley Jae Carranza",
   "domain": "https://ashleycarranza.com",
   "contactEmail": "ashleyjcarranza@gmail.com",
   "navigation": [
-    {
-      "label": "About",
-      "href": "/about/"
-    },
-    {
-      "label": "My Work",
-      "href": "/my-work/"
-    },
-    {
-      "label": "Speaking & Events",
-      "href": "/speaking-features/"
-    },
-    {
-      "label": "Contact",
-      "href": "/contact/"
-    }
+    { "label": "About", "href": "/about/" },
+    { "label": "My Work", "href": "/my-work/" },
+    { "label": "Speaking & Features", "href": "/speaking-features/" },
+    { "label": "News", "href": "/news/" },
+    { "label": "Contact", "href": "/contact/" }
   ],
   "home": {
-    "featuredProducts": 2,
-    "featuredEvents": 2
+    "heroEyebrow": "Writer • Educator • Creator",
+    "heroHeading": "Ashley Jae Carranza",
+    "heroSubheading": "Ashley is a writer, educator, and creator based in Las Vegas. She teaches high school and college writing, including courses in the prison system, and is currently completing her MFA in creative writing while working on her novel A Boy Named Doctor.",
+    "heroImage": "/assets/img/headshot.webp",
+    "heroImageAlt": "Ashley Jae Carranza smiling in a headshot portrait",
+    "heroDetails": [
+      "Based in Las Vegas, NV",
+      "Teaches high school and college writing",
+      "Currently writing A Boy Named Doctor"
+    ],
+    "proofItems": [
+      "Based in Las Vegas",
+      "Editor, educator, and scholar",
+      "Working on A Boy Named Doctor"
+    ],
+    "heroCTAs": [
+      { "label": "Explore My Work", "href": "/my-work/", "icon": "bi-book", "style": "primary" },
+      { "label": "Speaking & Features", "href": "/speaking-features/", "icon": "bi-mic", "style": "outline" },
+      { "label": "Google Scholar", "href": "https://scholar.google.com/citations?user=BeOttpYAAAAJ&hl=en", "icon": "bi-mortarboard", "style": "outline" }
+    ],
+    "quickNav": [
+      { "title": "About", "description": "Learn about Ashley's teaching, editing, scholarship, and current creative work.", "href": "/about/", "linkText": "Read bio" },
+      { "title": "My Work", "description": "Browse books, academic publications, creative works, and classroom-ready resources.", "href": "/my-work/", "linkText": "Explore work" },
+      { "title": "Speaking & Features", "description": "See conference panels, presentations, and selected public-facing features.", "href": "/speaking-features/", "linkText": "View engagements" }
+    ],
+    "featuredProducts": 3,
+    "featuredEvents": 2,
+    "featuredPosts": 2
   },
   "social": {
     "instagram": "",
@@ -31,16 +46,18 @@
     "youtube": ""
   },
   "seo": {
-    "defaultTitle": "Ashley Carranza | Author & Speaker",
-    "defaultDescription": "Official site of Ashley Carranza — books, speaking engagements, conferences, and media.",
+    "defaultTitle": "Ashley Jae Carranza | Writer, Educator & Creator",
+    "defaultDescription": "Official site of Ashley Jae Carranza — writer, educator, editor, and creator based in Las Vegas.",
     "keywords": [
+      "Ashley Jae Carranza",
       "Ashley Carranza",
-      "author",
-      "books",
-      "kids coloring books",
-      "speaker",
-      "conferences",
-      "education"
+      "writer",
+      "educator",
+      "creative writing",
+      "editor",
+      "Las Vegas writer",
+      "conference speaker",
+      "academic publications"
     ]
   }
 }

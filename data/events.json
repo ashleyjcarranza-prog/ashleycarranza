@@ -2,40 +2,76 @@
   "timezone": "America/Los_Angeles",
   "events": [
     {
-      "id": "evt-upcoming-001",
-      "type": "upcoming_conference",
-      "date": "2026-06-18",
-      "time": "10:00 AM PST",
-      "city": "Los Angeles, CA",
-      "venue": "Los Angeles Convention Center",
-      "venueAddress": "1201 S Figueroa St, Los Angeles, CA",
-      "venueMapUrl": "https://maps.google.com/?q=Los+Angeles+Convention+Center",
-      "talkTitle": "Raising Readers in a Digital World",
-      "topic": "Education"
-    },
-    {
-      "id": "evt-speaking-001",
+      "id": "evt-2020-far-west",
       "type": "speaking_engagement",
-      "date": "2026-08-10",
-      "time": "1:30 PM PST",
-      "city": "San Diego, CA",
-      "venue": "San Diego Unified School District",
-      "venueAddress": "4100 Normal St, San Diego, CA",
-      "venueMapUrl": "https://maps.google.com/?q=San+Diego+Unified+School+District",
-      "talkTitle": "Empowering Young Learners Through Story",
-      "topic": "Student Growth"
+      "date": "2020-02-01",
+      "displayDate": "February 2020",
+      "city": "Las Vegas, NV",
+      "venue": "Far West PCA/ACA Regional",
+      "venueAddress": "Las Vegas, NV",
+      "venueMapUrl": "https://maps.google.com/?q=Las+Vegas+NV",
+      "talkTitle": "ParaNormative: Pressures on Sexuality within Society in ParaNorman",
+      "topic": "Panel organizer, chair, and presenter for Cultural Issues in Film 1998–2020"
     },
     {
-      "id": "evt-past-001",
+      "id": "evt-2018-pca-aca-national",
       "type": "past_appearance",
-      "date": "2025-11-03",
-      "time": "9:00 AM PST",
-      "city": "Phoenix, AZ",
-      "venue": "Arizona Education Summit",
-      "venueAddress": "100 N 3rd Ave, Phoenix, AZ",
-      "venueMapUrl": "https://maps.google.com/?q=Arizona+Education+Summit+Phoenix",
-      "talkTitle": "Building Confidence in Young Readers",
-      "topic": "Literacy"
+      "date": "2018-03-01",
+      "displayDate": "March 2018",
+      "city": "Indianapolis, IN",
+      "venue": "PCA/ACA National",
+      "venueAddress": "Indianapolis, IN",
+      "venueMapUrl": "https://maps.google.com/?q=Indianapolis+IN",
+      "talkTitle": "The Rebirth of King's Children",
+      "topic": "Conference paper presentation"
+    },
+    {
+      "id": "evt-2017-summer-institute",
+      "type": "past_appearance",
+      "date": "2017-03-01",
+      "displayDate": "March 2017",
+      "city": "Bowling Green, OH",
+      "venue": "PCA/ACA Summer Research Institute",
+      "venueAddress": "Bowling Green State University, OH",
+      "venueMapUrl": "https://maps.google.com/?q=Bowling+Green+State+University+OH",
+      "talkTitle": "PCA/ACA Summer Research Institute",
+      "topic": "Research institute participant"
+    },
+    {
+      "id": "evt-2016-pamla",
+      "type": "past_appearance",
+      "date": "2016-05-01",
+      "displayDate": "May 2016",
+      "city": "Riverside, CA",
+      "venue": "PAMLA Regional",
+      "venueAddress": "Riverside, CA",
+      "venueMapUrl": "https://maps.google.com/?q=Riverside+CA",
+      "talkTitle": "ParaNormative: Pressures on Sexuality Within Society in ParaNorman",
+      "topic": "Conference paper presentation"
+    },
+    {
+      "id": "evt-2014-pca-national",
+      "type": "past_appearance",
+      "date": "2014-04-01",
+      "displayDate": "April 2014",
+      "city": "Chicago, IL",
+      "venue": "PCA/ACA National",
+      "venueAddress": "Chicago, IL",
+      "venueMapUrl": "https://maps.google.com/?q=Chicago+IL",
+      "talkTitle": "Why I Am Jamie Lee Curtis",
+      "topic": "Conference paper presentation"
+    },
+    {
+      "id": "evt-2014-pca-regional",
+      "type": "past_appearance",
+      "date": "2014-02-01",
+      "displayDate": "February 2014",
+      "city": "Albuquerque, NM",
+      "venue": "PCA/ACA Regional",
+      "venueAddress": "Albuquerque, NM",
+      "venueMapUrl": "https://maps.google.com/?q=Albuquerque+NM",
+      "talkTitle": "Zombies, Xenophobia, and the Never-Ending Battle with 'The Other'",
+      "topic": "Conference paper presentation"
     }
   ]
 }

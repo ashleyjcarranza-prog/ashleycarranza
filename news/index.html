@@ -3,13 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>About | Ashley Jae Carranza</title>
-    <meta name="description" content="About Ashley Jae Carranza, a Las Vegas-based writer, educator, editor, and creator." />
+    <title>News | Ashley Jae Carranza</title>
+    <meta name="description" content="Features, writing updates, and recent highlights from Ashley Jae Carranza." />
     <meta name="theme-color" content="#FAFAF8" />
-    <link rel="canonical" href="https://ashleycarranza.com/about" />
-    <meta property="og:title" content="About | Ashley Jae Carranza" />
-    <meta property="og:description" content="Learn more about Ashley Jae Carranza's background, education, editing experience, and current creative work." />
-    <meta property="og:type" content="article" />
+    <link rel="canonical" href="https://ashleycarranza.com/news" />
+    <meta property="og:title" content="News | Ashley Jae Carranza" />
+    <meta property="og:description" content="Features, writing updates, and recent highlights from Ashley Jae Carranza." />
     <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,15 +18,26 @@
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
     <link rel="stylesheet" href="../assets/css/styles.css" />
   </head>
-  <body data-page="about">
+  <body data-page="news">
     <a class="skip-link" href="#main-content">Skip to content</a>
     <div id="site-nav"></div>
 
     <main id="main-content" class="container py-5 page-wrap">
-      <h1 class="section-title mb-4" data-aos="fade-up">About Ashley Jae Carranza</h1>
-      <div id="about-bio" aria-live="polite"></div>
-      <section id="about-topics" class="section-divider" aria-live="polite"></section>
-      <section id="about-cta" class="section-divider mb-5" aria-live="polite"></section>
+      <h1 class="section-title mb-2" data-aos="fade-up">News & Updates</h1>
+      <p class="text-muted-ui mb-4" data-aos="fade-up" data-aos-delay="60">Feature interviews, current writing updates, and recent highlights.</p>
+
+      <section id="news-filter" class="filter-bar mb-4" data-aos="fade-up" data-aos-delay="100">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label" for="filter-category">Category</label>
+            <select id="filter-category" class="form-select">
+              <option value="">All Categories</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section id="posts-grid" class="row g-4" aria-live="polite"></section>
     </main>
 
     <div id="site-footer"></div>

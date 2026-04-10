@@ -1,0 +1,65 @@
+{
+  "headline": "About Ashley Jae Carranza",
+  "tagline": "Writer • Educator • Creator",
+  "portrait": "/assets/img/headshot.webp",
+  "location": "Las Vegas, NV",
+  "bio": [
+    "Ashley is a writer, educator, and creator based in Las Vegas. She teaches both high school and college writing, including courses in the prison system. That work, along with her own life, shapes how she thinks about storytelling, voice, and transformation.",
+    "She is currently working toward her MFA in creative writing and completing her novel A Boy Named Doctor."
+  ],
+  "secondaryImage": "/assets/img/chill.webp",
+  "secondaryImageAlt": "Ashley Jae Carranza reading beside a bookshelf",
+  "currentWork": {
+    "eyebrow": "Current Work",
+    "heading": "Writing from lived experience",
+    "description": "Ashley is currently completing A Boy Named Doctor, a coming-of-age novel set in the California desert following a young boy navigating loss, identity, and survival. Through raw experiences and shifting relationships, he begins to understand who he is and who he might become."
+  },
+  "editingExperience": [
+    "PopMeC Research Blog — Peer Reviewer for horror, popular culture, American film, and Stephen King studies",
+    "101 Words — Editor",
+    "Helen: a literary magazine — Contributing Editor and Fiction Reader",
+    "DASH Literary Journal — Fiction Editor and Reader"
+  ],
+  "education": [
+    "Master of Social Work (MSW), University of Nevada, Reno (pending 2028)",
+    "Master of Fine Arts (MFA, Creative Writing), Southern New Hampshire University (pending 2026)",
+    "Master of Education (M.Ed, English Language Acquisition Development), Sierra Nevada University",
+    "Master of Arts (MA, English), California State University, Fullerton",
+    "Bachelor of Arts (BA, English), California State University, Fullerton",
+    "Associate of Arts / Associate of Science (AA/AS), Riverside Community College"
+  ],
+  "professionalLinks": [
+    {
+      "label": "Google Scholar",
+      "href": "https://scholar.google.com/citations?user=BeOttpYAAAAJ&hl=en"
+    },
+    {
+      "label": "Awesome Gang Interview",
+      "href": "https://awesomegang.com/ashley-jae-carranza/"
+    },
+    {
+      "label": "Teachers Pay Teachers Store",
+      "href": "https://www.teacherspayteachers.com/store/the-crazy-english-lady"
+    }
+  ],
+  "speakingTopics": [
+    {
+      "title": "Storytelling, Voice, and Transformation",
+      "description": "How lived experience, teaching, and creative practice shape stories that speak honestly to identity and change."
+    },
+    {
+      "title": "Teaching Writing Across Contexts",
+      "description": "Insights from teaching high school, college, and prison-system writing classrooms."
+    },
+    {
+      "title": "Popular Culture, Horror, and Film Studies",
+      "description": "Conference-ready conversations rooted in Ashley's research, criticism, and editorial work."
+    }
+  ],
+  "cta": {
+    "heading": "Connect with Ashley",
+    "description": "Available for speaking engagements, panels, teaching conversations, and feature opportunities.",
+    "linkText": "Start the conversation",
+    "linkHref": "/contact/"
+  }
+}

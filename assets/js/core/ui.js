@@ -15,7 +15,7 @@ export function buildNav(site = {}) {
   const nav = document.getElementById('site-nav');
   if (!nav) return;
 
-  const brand = escapeHtml(site.siteName || 'Ashley Carranza');
+  const brand = escapeHtml(site.siteName || 'Ashley Jae Carranza');
   const itemsMarkup = getNavigation(site)
     .map((item) => `<li class="nav-item"><a class="nav-link" href="${item.href}">${escapeHtml(item.label)}</a></li>`)
     .join('');
@@ -51,7 +51,7 @@ export function buildFooter(site = {}) {
   if (!footer) return;
 
   const year = new Date().getFullYear();
-  const siteName = escapeHtml(site.siteName || 'Ashley Carranza');
+  const siteName = escapeHtml(site.siteName || 'Ashley Jae Carranza');
   const email = escapeHtml(site.contactEmail || 'ashleyjcarranza@gmail.com');
   const socialMarkup = socialEntries(site)
     .map((entry) => {

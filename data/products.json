@@ -1,19 +1,64 @@
 {
   "products": [
     {
-      "id": "book-001",
-      "title": "The Courage to Grow",
-      "description": "A heartfelt story about a young girl who discovers that the bravest thing she can do is be herself.",
-      "category": "Books",
-      "amazonUrl": "https://www.amazon.com/",
-      "tptUrl": "https://www.teacherspayteachers.com/"
+      "id": "academic-001",
+      "title": "Our Fears Made Manifest",
+      "description": "A collection examining terror, trauma, and loss in film from 1998 to 2019.",
+      "longDescription": "An academic title rooted in horror, film, and popular culture studies, reflecting Ashley's ongoing engagement with criticism and scholarship.",
+      "category": "Academic Writing",
+      "amazonUrl": "https://www.amazon.com/Our-Fears-Made-Manifest-1998-2019/dp/1476679312",
+      "featured": true,
+      "publishDate": "2021-01-01"
     },
     {
-      "id": "coloring-001",
-      "title": "Colors of the Classroom",
-      "description": "An interactive coloring book that brings learning to life through creativity and imagination.",
-      "category": "Coloring Books for Kids",
-      "amazonUrl": "https://www.amazon.com/"
+      "id": "academic-002",
+      "title": "Uncovering Stranger Things",
+      "description": "Critical work engaging with nostalgia, innocence, and horror in the Stranger Things universe.",
+      "longDescription": "A scholarly publication that reflects Ashley's interest in horror, popular culture, and how cultural stories shape identity and memory.",
+      "category": "Academic Writing",
+      "amazonUrl": "https://www.amazon.com/Uncovering-Stranger-Things-Nostalgia-Innocence/dp/1476671869",
+      "featured": false,
+      "publishDate": "2020-01-01"
+    },
+    {
+      "id": "academic-003",
+      "title": "Theories and Strategies for Teaching Creative Writing Online",
+      "description": "A pedagogy-focused resource for teaching creative writing in digital learning environments.",
+      "longDescription": "A teaching-centered publication that reflects Ashley's classroom experience and commitment to creative writing instruction across formats.",
+      "category": "Academic Writing",
+      "amazonUrl": "https://www.amazon.com/Theories-Strategies-Teaching-Creative-Routledge/dp/0367895269",
+      "featured": false,
+      "publishDate": "2021-01-01"
+    },
+    {
+      "id": "creative-001",
+      "title": "Poop-tastic Coloring Adventures",
+      "description": "A playful coloring title that brings a lighter, more whimsical energy into Ashley's creative work.",
+      "longDescription": "A creative, kid-facing project that expands Ashley's body of work beyond academic writing and into accessible, imaginative formats.",
+      "category": "Creative Works",
+      "amazonUrl": "https://www.amazon.com/Poop-tastic-Coloring-Adventures-Poop-Book/dp/B0F1MYLKJS",
+      "featured": true,
+      "isNew": true,
+      "publishDate": "2025-01-01"
+    },
+    {
+      "id": "creative-002",
+      "title": "World of Whiskers",
+      "description": "A creative title included among Ashley's featured works from the previous site.",
+      "longDescription": "A lighter creative project that sits alongside Ashley's academic and instructional work, showing a broader range of interests and formats.",
+      "category": "Creative Works",
+      "amazonUrl": "https://www.amazon.com/World-Whiskers-Maria-Cecilia-Azar-ebook/dp/B08C8WX5HW",
+      "publishDate": "2020-01-01"
+    },
+    {
+      "id": "resources-001",
+      "title": "The Crazy English Lady",
+      "description": "Ashley's Teachers Pay Teachers storefront featuring classroom-ready resources and writing support materials.",
+      "longDescription": "A growing teaching-resource collection designed to support writing instruction, classroom engagement, and creative learning.",
+      "category": "Teaching & Resources",
+      "tptUrl": "https://www.teacherspayteachers.com/store/the-crazy-english-lady",
+      "featured": true,
+      "publishDate": "2024-01-01"
     }
   ]
 }

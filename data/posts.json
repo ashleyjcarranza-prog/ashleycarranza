@@ -1,0 +1,24 @@
+{
+  "posts": [
+    {
+      "id": "post-001",
+      "title": "Feature Interview: Our Fears Made Manifest",
+      "date": "2026-04-10",
+      "displayDate": "Feature Interview",
+      "excerpt": "When Our Fears Made Manifest was released, Ashley shared more about the collection in a feature interview with Awesome Gang.",
+      "body": "<p>When <em>Our Fears Made Manifest</em> came out, Ashley participated in an interview with Awesome Gang to talk about the collection and the ideas behind it.</p><p>The conversation offers a fuller look at the project and the writing life around it.</p><p><a href=\"https://awesomegang.com/ashley-jae-carranza/\" target=\"_blank\" rel=\"noopener noreferrer\">Read the interview on Awesome Gang</a>.</p>",
+      "category": "Features",
+      "featured": true
+    },
+    {
+      "id": "post-002",
+      "title": "Current Project: A Boy Named Doctor",
+      "date": "2026-04-10",
+      "displayDate": "Current Project",
+      "excerpt": "Ashley is currently completing her MFA in creative writing while working on a coming-of-age novel set in the California desert.",
+      "body": "<p>Ashley is currently working toward her MFA in creative writing and completing <em>A Boy Named Doctor</em>.</p><p>The novel is a coming-of-age story set in the California desert following a young boy navigating loss, identity, and survival. Through raw experiences and shifting relationships, he begins to understand who he is and who he might become.</p>",
+      "category": "Writing Life",
+      "featured": false
+    }
+  ]
+}

@@ -1,7 +1,8 @@
 const defaultNavigation = [
   { label: 'About', href: '/about/' },
   { label: 'My Work', href: '/my-work/' },
-  { label: 'Speaking & Events', href: '/speaking-features/' },
+  { label: 'Speaking & Features', href: '/speaking-features/' },
+  { label: 'News', href: '/news/' },
   { label: 'Contact', href: '/contact/' }
 ];
 
@@ -17,7 +18,7 @@ export function getSiteBasePath() {
 
 export function withBasePath(path = '/') {
   if (!path) return getSiteBasePath() || '/';
-  if (/^(https?:)?\/\//.test(path) || path.startsWith('mailto:') || path.startsWith('tel:') || path.startsWith('#')) {
+  if (/^[a-z][a-z0-9+.-]*:/i.test(path) || /^(https?:)?\/\//.test(path) || path.startsWith('#')) {
     return path;
   }
 

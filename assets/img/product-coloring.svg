@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
-  <title id="title">Coloring book placeholder</title>
-  <desc id="desc">A placeholder illustration for a coloring book product.</desc>
+  <title id="title">Creative work artwork</title>
+  <desc id="desc">Decorative artwork for a creative or illustrated work.</desc>
   <rect width="1200" height="900" rx="8" fill="#F2F5F0" />
   <rect x="260" y="160" width="410" height="560" rx="6" fill="#FFFFFF" stroke="#D4E2CE" stroke-width="8" />
   <circle cx="465" cy="350" r="100" fill="#E8F0E4" stroke="#2D5016" stroke-width="6" opacity="0.4" />
