@@ -65,33 +65,32 @@ function renderListCard(title, items) {
     </div>`;
 }
 
-function renderLinks(links) {
-  if (!links || !links.length) return '';
-
-  return `
-    <section class="section-divider">
-      <h2 class="section-title mb-3" data-aos="fade-up">Professional Links</h2>
-      <div class="d-flex flex-wrap gap-2" data-aos="fade-up">
-        ${links
-          .map(
-            (link) =>
-              `<a class="btn-outline btn-sm" href="${withBasePath(safeHref(link.href, '#'))}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.label)}</a>`
-          )
-          .join('')}
-      </div>
-    </section>`;
-}
-
 function renderCredentials(data) {
   const editing = renderListCard('Editing Experience', data.editingExperience);
   const education = renderListCard('Education', data.education);
-  if (!editing && !education) return '';
+  const professionalLinks = (data.professionalLinks || []).length
+    ? `
+      <div class="topic-card h-100">
+        <h2 class="h4 mb-3">Professional Links</h2>
+        <div class="d-flex flex-wrap gap-2">
+          ${data.professionalLinks
+            .map(
+              (link) =>
+                `<a class="btn-outline btn-sm" href="${withBasePath(safeHref(link.href, '#'))}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.label)}</a>`
+            )
+            .join('')}
+        </div>
+      </div>`
+    : '';
+
+  if (!editing && !education && !professionalLinks) return '';
 
   return `
     <section class="section-divider">
       <div class="row g-4">
-        ${editing ? `<div class="col-lg-6" data-aos="fade-up">${editing}</div>` : ''}
-        ${education ? `<div class="col-lg-6" data-aos="fade-up" data-aos-delay="60">${education}</div>` : ''}
+        ${editing ? `<div class="col-lg-6 col-xl-4" data-aos="fade-up">${editing}</div>` : ''}
+        ${education ? `<div class="col-lg-6 col-xl-4" data-aos="fade-up" data-aos-delay="60">${education}</div>` : ''}
+        ${professionalLinks ? `<div class="col-lg-6 col-xl-4" data-aos="fade-up" data-aos-delay="120">${professionalLinks}</div>` : ''}
       </div>
     </section>`;
 }
@@ -144,9 +143,7 @@ export async function initAboutPage() {
   try {
     const data = await getJson('/data/about.json');
     if (bioEl) {
-      bioEl.innerHTML = [renderBio(data), renderCurrentWork(data), renderCredentials(data), renderLinks(data.professionalLinks)]
-        .filter(Boolean)
-        .join('');
+      bioEl.innerHTML = [renderBio(data), renderCurrentWork(data), renderCredentials(data)].filter(Boolean).join('');
     }
     if (topicsEl) topicsEl.innerHTML = renderTopics(data.speakingTopics);
     if (ctaEl) ctaEl.innerHTML = renderCTA(data.cta);
