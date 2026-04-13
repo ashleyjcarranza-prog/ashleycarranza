@@ -561,6 +561,15 @@ a:hover {
 
 /* ── Product modal ── */
 
+#productDetailModal .modal-header {
+  position: relative;
+  z-index: 2;
+}
+
+#productDetailModal .modal-body > .row:first-child {
+  margin-top: 0;
+}
+
 .product-meta {
   font-size: 0.9rem;
   color: var(--secondary);

@@ -12,6 +12,14 @@ function socialEntries(site) {
   ].filter((entry) => entry.href);
 }
 
+function syncThemeToggle(toggleBtn) {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const nextThemeLabel = isDark ? 'light' : 'dark';
+  toggleBtn.setAttribute('aria-pressed', String(isDark));
+  toggleBtn.setAttribute('aria-label', `Switch to ${nextThemeLabel} mode`);
+  toggleBtn.setAttribute('title', `Switch to ${nextThemeLabel} mode`);
+}
+
 export function buildNav(site = {}) {
   const nav = document.getElementById('site-nav');
   if (!nav) return;
@@ -26,8 +34,8 @@ export function buildNav(site = {}) {
       <div class="container py-1">
         <a class="navbar-brand" href="${withBasePath('/')}">${brand}</a>
         <div class="d-flex align-items-center order-lg-last gap-2">
-          <button class="theme-toggle" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
-            <i class="bi bi-moon-fill"></i><i class="bi bi-sun-fill"></i>
+          <button class="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false" title="Switch to dark mode">
+            <i class="bi bi-moon-fill" aria-hidden="true"></i><i class="bi bi-sun-fill" aria-hidden="true"></i>
           </button>
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" aria-controls="navMenu" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -44,11 +52,13 @@ export function buildNav(site = {}) {
 
   const navMenu = nav.querySelector('#navMenu');
   const toggleBtn = nav.querySelector('.theme-toggle');
+  syncThemeToggle(toggleBtn);
   toggleBtn.addEventListener('click', () => {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const next = isDark ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('theme', next);
+    syncThemeToggle(toggleBtn);
   });
 
   nav.querySelectorAll('.nav-link').forEach((link) => {

@@ -1,5 +1,6 @@
 import { renderEmptyState, renderPreviewEventCard, renderPreviewProductCard, renderPreviewPostCard } from '../core/cards.js';
 import { escapeHtml } from '../core/format.js';
+import { initProductModals } from '../core/product-modal.js';
 import { getJson, withBasePath } from '../core/site.js';
 import { renderSkeleton } from '../core/skeleton.js';
 import { renderTestimonialCarousel } from '../core/testimonials.js';
@@ -109,6 +110,7 @@ export async function initHomePage(site = {}) {
         .slice(0, featuredProducts)
         .map((product, index) => renderPreviewProductCard(product, index))
         .join('');
+      initProductModals(productsResult.value.products);
     } else {
       workRoot.innerHTML = renderEmptyState('More books coming soon.');
     }
