@@ -41,6 +41,10 @@ function renderProductBuyLinks(product) {
     .join('\n          ');
 }
 
+function getPrimaryProductLink(product) {
+  return getProductLinks(product)[0] || null;
+}
+
 // ── Product image resolution ──
 
 function resolveProductImage(product) {
@@ -69,20 +73,39 @@ export function renderPreviewProductCard(product, index = 0) {
   const category = product.category || 'Work';
   const description = product.description || 'More details coming soon.';
   const { image, fallback } = resolveProductImage(product);
+  const primaryLink = getPrimaryProductLink(product);
+  const imageMarkup = primaryLink
+    ? `<a class="product-media-link" href="${escapeHtml(safeHref(primaryLink.href))}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(primaryLink.label)}: ${escapeHtml(title)}">
+        <img class="product-placeholder" src="${escapeHtml(image)}" alt="Cover image for ${escapeHtml(
+          title
+        )}" loading="lazy" onerror="this.onerror=null;this.src='${escapeHtml(fallback)}';" />
+      </a>`
+    : `<img class="product-placeholder" src="${escapeHtml(image)}" alt="Cover image for ${escapeHtml(
+        title
+      )}" loading="lazy" onerror="this.onerror=null;this.src='${escapeHtml(fallback)}';" />`;
+  const titleMarkup = primaryLink
+    ? `<h3 class="h5 mb-0"><a class="product-title-link" href="${escapeHtml(safeHref(primaryLink.href))}" target="_blank" rel="noopener noreferrer">${escapeHtml(
+        title
+      )}</a></h3>`
+    : `<h3 class="h5 mb-0">${escapeHtml(title)}</h3>`;
+  const actions = primaryLink
+    ? `<div class="d-flex gap-2 flex-wrap mt-auto">
+          <a class="ac-btn btn-sm" href="${escapeHtml(safeHref(primaryLink.href))}" target="_blank" rel="noopener noreferrer">${escapeHtml(primaryLink.label)}</a>
+          <button class="btn-outline btn-sm product-detail-trigger" data-product-id="${escapeHtml(product.id || '')}">Details</button>
+        </div>`
+    : `<button class="btn-outline btn-sm mt-auto product-detail-trigger" data-product-id="${escapeHtml(product.id || '')}">See details</button>`;
 
   return `
     <div class="col-md-6" data-aos="fade-up" data-aos-delay="${Math.min(index * 70, 140)}">
       <article class="card-item preview-card p-3 h-100 d-flex flex-column">
-        <img class="product-placeholder" src="${escapeHtml(image)}" alt="Cover image for ${escapeHtml(
-          title
-        )}" loading="lazy" onerror="this.onerror=null;this.src='${escapeHtml(fallback)}';" />
+        ${imageMarkup}
         ${renderBadges(product)}
         <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-          <h3 class="h5 mb-0">${escapeHtml(title)}</h3>
+          ${titleMarkup}
           <span class="badge-category">${escapeHtml(category)}</span>
         </div>
         <p class="text-muted-ui mb-3">${escapeHtml(description)}</p>
-        <button class="btn-outline btn-sm mt-auto product-detail-trigger" data-product-id="${escapeHtml(product.id || '')}">See details</button>
+        ${actions}
       </article>
     </div>
   `;
@@ -93,16 +116,29 @@ export function renderProductCard(product, index = 0) {
   const category = product.category || 'Work';
   const description = product.description || 'More details coming soon.';
   const { image, fallback } = resolveProductImage(product);
+  const primaryLink = getPrimaryProductLink(product);
+  const imageMarkup = primaryLink
+    ? `<a class="product-media-link" href="${escapeHtml(safeHref(primaryLink.href))}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(primaryLink.label)}: ${escapeHtml(title)}">
+        <img class="product-placeholder mb-3" src="${escapeHtml(image)}" alt="Cover image for ${escapeHtml(
+          title
+        )}" loading="lazy" onerror="this.onerror=null;this.src='${escapeHtml(fallback)}';" />
+      </a>`
+    : `<img class="product-placeholder mb-3" src="${escapeHtml(image)}" alt="Cover image for ${escapeHtml(
+        title
+      )}" loading="lazy" onerror="this.onerror=null;this.src='${escapeHtml(fallback)}';" />`;
+  const titleMarkup = primaryLink
+    ? `<h2 class="h5 mb-0"><a class="product-title-link" href="${escapeHtml(safeHref(primaryLink.href))}" target="_blank" rel="noopener noreferrer">${escapeHtml(
+        title
+      )}</a></h2>`
+    : `<h2 class="h5 mb-0">${escapeHtml(title)}</h2>`;
 
   return `
     <div class="col-md-6 col-xl-4" data-aos="fade-up" data-aos-delay="${Math.min(index * 60, 240)}">
       <article class="card-item p-3 h-100 d-flex flex-column">
-        <img class="product-placeholder mb-3" src="${escapeHtml(image)}" alt="Cover image for ${escapeHtml(
-          title
-        )}" loading="lazy" onerror="this.onerror=null;this.src='${escapeHtml(fallback)}';" />
+        ${imageMarkup}
         ${renderBadges(product)}
         <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-          <h2 class="h5 mb-0">${escapeHtml(title)}</h2>
+          ${titleMarkup}
           <span class="badge-category">${escapeHtml(category)}</span>
         </div>
         <p class="text-muted-ui">${escapeHtml(description)}</p>

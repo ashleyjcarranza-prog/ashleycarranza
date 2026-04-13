@@ -42,12 +42,20 @@ export function buildNav(site = {}) {
     </nav>
   `;
 
+  const navMenu = nav.querySelector('#navMenu');
   const toggleBtn = nav.querySelector('.theme-toggle');
   toggleBtn.addEventListener('click', () => {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const next = isDark ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('theme', next);
+  });
+
+  nav.querySelectorAll('.nav-link').forEach((link) => {
+    link.addEventListener('click', () => {
+      if (!navMenu || !navMenu.classList.contains('show') || !window.bootstrap?.Collapse) return;
+      window.bootstrap.Collapse.getOrCreateInstance(navMenu, { toggle: false }).hide();
+    });
   });
 
   const currentPath = normalizePath(stripBasePath(window.location.pathname));
