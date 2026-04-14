@@ -91,6 +91,11 @@ export function buildFooter(site = {}) {
       return `<a href="${href}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(entry.label)}"><i class="bi ${entry.icon} me-1"></i>${escapeHtml(entry.label)}</a>`;
     })
     .join('');
+  const legalMarkup = `
+    <div class="footer-links">
+      <a href="${withBasePath('/privacy/')}">Privacy Policy</a>
+      <a href="${withBasePath('/terms/')}">Terms of Use</a>
+    </div>`;
 
   footer.innerHTML = `
     <footer class="py-4 mt-5">
@@ -99,7 +104,10 @@ export function buildFooter(site = {}) {
           <small>&copy; ${year} ${siteName}</small>
           <small>Media &amp; speaking inquiries: <a class="text-decoration-none" href="mailto:${email}">${email}</a></small>
         </div>
-        ${socialMarkup ? `<div class="footer-links">${socialMarkup}</div>` : ''}
+        <div class="d-flex flex-column flex-lg-row gap-2 align-items-start align-items-lg-center">
+          ${legalMarkup}
+          ${socialMarkup ? `<div class="footer-links">${socialMarkup}</div>` : ''}
+        </div>
       </div>
     </footer>
   `;
@@ -114,7 +122,9 @@ export function buildBreadcrumb() {
     '/contact': 'Contact',
     '/my-work': 'My Work',
     '/news': 'News',
-    '/speaking-features': 'Speaking & Features'
+    '/speaking-features': 'Speaking & Features',
+    '/privacy': 'Privacy Policy',
+    '/terms': 'Terms of Use'
   };
   const label = labels[path];
   if (!label) return;
@@ -141,7 +151,9 @@ export function injectBreadcrumbSchema() {
     '/contact': 'Contact',
     '/my-work': 'My Work',
     '/news': 'News',
-    '/speaking-features': 'Speaking & Features'
+    '/speaking-features': 'Speaking & Features',
+    '/privacy': 'Privacy Policy',
+    '/terms': 'Terms of Use'
   };
   const label = labels[path];
   if (!label) return;

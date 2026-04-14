@@ -1,0 +1,47 @@
+{
+  "name": "website",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker CMS for Ashley Jae Carranza website.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "typegen": "wrangler types",
+    "typecheck": "npm run typegen && tsc --noEmit",
+    "lint": "eslint \"eslint.config.js\" \"public/assets/js/**/*.js\"",
+    "test": "vitest run",
+    "check": "npm run lint && npm run typecheck && npm run test",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "db:seed:local": "tsx scripts/seed.ts --local",
+    "db:seed:remote": "tsx scripts/seed.ts --remote",
+    "password:hash": "tsx scripts/hash-password.ts",
+    "deploy": "wrangler deploy"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ashleyjcarranza-prog/ashleycarranza.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/ashleyjcarranza-prog/ashleycarranza/issues"
+  },
+  "homepage": "https://github.com/ashleyjcarranza-prog/ashleycarranza#readme",
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.12",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^25.6.0",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^10.2.0",
+    "globals": "^17.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.4",
+    "wrangler": "^4.82.2"
+  }
+}

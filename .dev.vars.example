@@ -1,0 +1,7 @@
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD_HASH=pbkdf2_sha256$310000$replace-me$replace-me
+SESSION_SECRET=replace-with-a-long-random-secret
+SITE_URL=https://ashleycarranza.com
+# Optional richer traffic queries in the admin dashboard:
+# CF_ACCOUNT_ID=replace-me
+# CF_API_TOKEN=replace-me

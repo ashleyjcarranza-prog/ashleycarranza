@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>(function(){var t=localStorage.getItem('theme');if(!t){t=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'}document.documentElement.setAttribute('data-theme',t)})()</script>
+    <title>Admin Login | Ashley Jae Carranza</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="theme-color" content="#FAFAF8" />
+    <link rel="icon" href="../../assets/img/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="../../assets/css/styles.css" />
+    <link rel="stylesheet" href="../../assets/css/admin.css" />
+  </head>
+  <body class="admin-shell admin-login-shell">
+    <main class="container py-5">
+      <div class="admin-login-card mx-auto">
+        <p class="section-label mb-2">Ashley Jae Carranza</p>
+        <h1 class="section-title mb-3">Admin Login</h1>
+        <p class="text-muted-ui mb-4">Secure access for content updates, speaking entries, analytics, and legal pages.</p>
+        <div id="login-alert" class="alert alert-danger d-none" role="alert"></div>
+        <form id="admin-login-form" class="d-grid gap-3">
+          <div>
+            <label class="form-label" for="login-email">Email</label>
+            <input id="login-email" name="email" class="form-control" type="email" autocomplete="username" required />
+          </div>
+          <div>
+            <label class="form-label" for="login-password">Password</label>
+            <input id="login-password" name="password" class="form-control" type="password" autocomplete="current-password" required />
+          </div>
+          <button id="login-submit" class="ac-btn" type="submit">Sign In</button>
+        </form>
+      </div>
+    </main>
+    <footer class="py-4">
+      <div class="container footer-inner d-flex flex-column flex-lg-row justify-content-between gap-3">
+        <div class="d-flex flex-column gap-1">
+          <small>&copy; 2026 Ashley Jae Carranza</small>
+        </div>
+        <div class="footer-links">
+          <a href="../../privacy/">Privacy Policy</a>
+          <a href="../../terms/">Terms of Use</a>
+        </div>
+      </div>
+    </footer>
+    <script type="module" src="../../assets/js/admin-login.js"></script>
+  </body>
+</html>

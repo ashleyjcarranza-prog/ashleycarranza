@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>(function(){var t=localStorage.getItem('theme');if(!t){t=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'}document.documentElement.setAttribute('data-theme',t)})()</script>
+    <title>Admin | Ashley Jae Carranza</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="theme-color" content="#FAFAF8" />
+    <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+    <link rel="stylesheet" href="../assets/css/admin.css" />
+  </head>
+  <body class="admin-shell">
+    <header class="admin-topbar border-bottom">
+      <div class="container py-3 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+        <div>
+          <p class="section-label mb-1">Content Admin</p>
+          <h1 class="h3 mb-0">Ashley Jae Carranza</h1>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span id="admin-email" class="text-muted-ui small"></span>
+          <button id="admin-logout" class="btn-outline btn-sm" type="button">Log Out</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container py-4">
+      <div id="admin-banner" class="alert d-none" role="alert"></div>
+      <div class="row g-4">
+        <div class="col-lg-3">
+          <nav class="admin-nav card-item p-3 sticky-top" aria-label="Admin Sections">
+            <button class="admin-nav-link is-active" data-target="overview" type="button">Overview</button>
+            <button class="admin-nav-link" data-target="links" type="button">Links</button>
+            <button class="admin-nav-link" data-target="speaking" type="button">Speaking</button>
+            <button class="admin-nav-link" data-target="site" type="button">Site Blocks</button>
+            <button class="admin-nav-link" data-target="legal" type="button">Legal</button>
+          </nav>
+        </div>
+
+        <div class="col-lg-9">
+          <section class="admin-panel is-active" data-panel="overview">
+            <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+              <div>
+                <h2 class="section-title mb-1">Overview</h2>
+                <p class="text-muted-ui mb-0">High-level content and traffic signals.</p>
+              </div>
+              <a class="btn-outline btn-sm" href="/" target="_blank" rel="noopener noreferrer">View Live Site</a>
+            </div>
+            <div id="overview-content" class="admin-loading">Loading dashboard...</div>
+          </section>
+
+          <section class="admin-panel" data-panel="links">
+            <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+              <div>
+                <h2 class="section-title mb-1">Links</h2>
+                <p class="text-muted-ui mb-0">Manage hero buttons, social links, and professional links.</p>
+              </div>
+              <button id="add-link-button" class="ac-btn btn-sm" type="button">Add Link</button>
+            </div>
+            <div id="links-content" class="admin-loading">Loading links...</div>
+          </section>
+
+          <section class="admin-panel" data-panel="speaking">
+            <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+              <div>
+                <h2 class="section-title mb-1">Speaking</h2>
+                <p class="text-muted-ui mb-0">Create, update, and remove speaking entries that drive the public page.</p>
+              </div>
+              <button id="add-speaking-button" class="ac-btn btn-sm" type="button">Add Speaking Item</button>
+            </div>
+            <div id="speaking-content" class="admin-loading">Loading speaking entries...</div>
+          </section>
+
+          <section class="admin-panel" data-panel="site">
+            <div class="d-flex flex-column gap-4">
+              <div class="card-item p-4">
+                <h2 class="section-title mb-2">Site & Home</h2>
+                <p class="text-muted-ui mb-4">Edit core homepage content and shared site metadata.</p>
+                <form id="site-form" class="d-grid gap-3"></form>
+              </div>
+              <div class="card-item p-4">
+                <h2 class="section-title mb-2">About Page</h2>
+                <p class="text-muted-ui mb-4">Edit bio, current work, and about-page content blocks.</p>
+                <form id="about-form" class="d-grid gap-3"></form>
+              </div>
+            </div>
+          </section>
+
+          <section class="admin-panel" data-panel="legal">
+            <div class="card-item p-4">
+              <h2 class="section-title mb-2">Legal Pages</h2>
+              <p class="text-muted-ui mb-4">Maintain privacy and terms copy for information collection and site usage.</p>
+              <form id="legal-form" class="d-grid gap-3"></form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <footer class="py-4">
+      <div class="container footer-inner d-flex flex-column flex-lg-row justify-content-between gap-3">
+        <div class="d-flex flex-column gap-1">
+          <small>&copy; 2026 Ashley Jae Carranza</small>
+        </div>
+        <div class="footer-links">
+          <a href="../privacy/" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+          <a href="../terms/" target="_blank" rel="noopener noreferrer">Terms of Use</a>
+        </div>
+      </div>
+    </footer>
+
+    <div class="modal fade" id="admin-edit-modal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header border-0 pb-0">
+            <h2 id="admin-edit-modal-title" class="h4 mb-0">Edit</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="admin-edit-form" class="d-grid gap-3"></form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="admin-delete-modal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header border-0 pb-0">
+            <h2 class="h4 mb-0">Confirm Delete</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p id="admin-delete-message" class="mb-4">Delete this item?</p>
+            <div class="d-flex justify-content-end gap-2">
+              <button class="btn-outline btn-sm" type="button" data-bs-dismiss="modal">Cancel</button>
+              <button id="admin-delete-confirm" class="ac-btn btn-sm" type="button">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="../assets/js/admin.js"></script>
+  </body>
+</html>

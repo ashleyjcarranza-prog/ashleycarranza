@@ -3,6 +3,7 @@ import { buildBreadcrumb, buildFooter, buildNav, initAnimations, injectBreadcrum
 import { initAboutPage } from './pages/about.js';
 import { initEventsPage } from './pages/events.js';
 import { initHomePage } from './pages/home.js';
+import { initLegalPage } from './pages/legal.js';
 import { initNewsPage } from './pages/news.js';
 import { initProductsPage } from './pages/products.js';
 
@@ -11,7 +12,8 @@ const pageInitializers = {
   products: initProductsPage,
   events: initEventsPage,
   about: initAboutPage,
-  news: initNewsPage
+  news: initNewsPage,
+  legal: initLegalPage
 };
 
 document.addEventListener('DOMContentLoaded', async () => {

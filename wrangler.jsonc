@@ -1,0 +1,38 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "ashleycarranza-site",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-14",
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+      "head_sampling_rate": 1
+    }
+  },
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page",
+    "run_worker_first": true
+  },
+  "vars": {
+    "SITE_URL": "https://ashleycarranza.com"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ashleycarranza-site",
+      "database_id": "88d2e89c-f09d-4557-9777-d3835ff50066",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "analytics_engine_datasets": [
+    {
+      "binding": "ANALYTICS",
+      "dataset": "ashleycarranza_site"
+    }
+  ]
+}

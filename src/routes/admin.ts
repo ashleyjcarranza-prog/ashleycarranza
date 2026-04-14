@@ -1,0 +1,375 @@
+import { asc, eq, sql } from 'drizzle-orm';
+import { Hono, type MiddlewareHandler } from 'hono';
+import { clearAdminCookie, getAdminSession, issueAdminSession, readAdminCookie, revokeAdminSession, setAdminCookie } from '../lib/auth/session';
+import { verifyPassword } from '../lib/auth/password';
+import { recordAudit } from '../lib/audit';
+import { getAdminAnalytics } from '../lib/analytics';
+import { getManagedAbout, getManagedLegal, getManagedSite, upsertDocument } from '../lib/content';
+import { getDb, nowIso, type AppBindings } from '../lib/db';
+import { links, speakingItems } from '../lib/db/schema';
+import { aboutDocumentSchema, legalDocumentSchema, linkInputSchema, siteDocumentSchema, speakingInputSchema } from '../lib/validation';
+
+type AdminEnv = {
+  Bindings: AppBindings;
+  Variables: {
+    adminEmail: string;
+    sessionToken: string;
+  };
+};
+
+const adminApi = new Hono<AdminEnv>();
+
+function isTrustedOrigin(requestUrl: string, origin: string | null, siteUrl: string) {
+  if (!origin) return false;
+  try {
+    const current = new URL(requestUrl);
+    const incoming = new URL(origin);
+    const configured = new URL(siteUrl);
+    return incoming.origin === current.origin || incoming.origin === configured.origin;
+  } catch {
+    return false;
+  }
+}
+
+async function enforceRateLimit(env: AppBindings, key: string) {
+  const bindingResult = await env.LOGIN_LIMITER?.limit?.({ key });
+  if (bindingResult) return bindingResult.success;
+
+  const db = getDb(env);
+  const response = await db.run(sql`
+    SELECT COUNT(*) AS count
+    FROM audit_log
+    WHERE entity_type = 'auth'
+      AND action = 'login_failed'
+      AND entity_id = ${key}
+      AND created_at >= datetime('now', '-15 minutes')
+  `);
+
+  const summary = (response.results?.[0] ?? {}) as Record<string, unknown>;
+  return Number(summary.count ?? 0) < 5;
+}
+
+const requireAdmin: MiddlewareHandler<AdminEnv> = async (c, next) => {
+  const token = readAdminCookie(c);
+  if (!token) return c.json({ authenticated: false }, 401);
+
+  const session = await getAdminSession(c.env, token);
+  if (!session) {
+    clearAdminCookie(c);
+    return c.json({ authenticated: false }, 401);
+  }
+
+  c.set('adminEmail', session.email);
+  c.set('sessionToken', token);
+  await next();
+};
+
+adminApi.use('*', async (c, next) => {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(c.req.method)) {
+    await next();
+    return;
+  }
+
+  if (!isTrustedOrigin(c.req.url, c.req.header('origin') ?? null, c.env.SITE_URL)) {
+    return c.json({ error: 'Untrusted origin.' }, 403);
+  }
+
+  await next();
+});
+
+adminApi.post('/auth/login', async (c) => {
+  const body = await c.req.json<{ email?: string; password?: string }>().catch(() => null);
+  if (!body?.email || !body?.password) return c.json({ error: 'Email and password are required.' }, 400);
+
+  const normalizedEmail = body.email.trim().toLowerCase();
+  const allowed = await enforceRateLimit(c.env, normalizedEmail);
+  if (!allowed) return c.json({ error: 'Too many login attempts. Try again later.' }, 429);
+
+  if (normalizedEmail !== c.env.ADMIN_EMAIL.trim().toLowerCase()) {
+    await recordAudit(c.env, {
+      actorEmail: normalizedEmail,
+      entityType: 'auth',
+      entityId: normalizedEmail,
+      action: 'login_failed',
+      summary: 'Rejected admin login attempt.'
+    });
+    return c.json({ error: 'Invalid email or password.' }, 401);
+  }
+
+  const validPassword = await verifyPassword(body.password, c.env.ADMIN_PASSWORD_HASH);
+  if (!validPassword) {
+    await recordAudit(c.env, {
+      actorEmail: normalizedEmail,
+      entityType: 'auth',
+      entityId: normalizedEmail,
+      action: 'login_failed',
+      summary: 'Rejected admin login attempt.'
+    });
+    return c.json({ error: 'Invalid email or password.' }, 401);
+  }
+
+  const { token, expiresAt } = await issueAdminSession(c.env, normalizedEmail);
+  setAdminCookie(c, token, expiresAt);
+  await recordAudit(c.env, {
+    actorEmail: normalizedEmail,
+    entityType: 'auth',
+    action: 'login',
+    summary: 'Admin logged in.'
+  });
+  return c.json({ authenticated: true, email: normalizedEmail });
+});
+
+adminApi.get('/session', async (c) => {
+  const token = readAdminCookie(c);
+  if (!token) return c.json({ authenticated: false });
+  const session = await getAdminSession(c.env, token);
+  if (!session) {
+    clearAdminCookie(c);
+    return c.json({ authenticated: false });
+  }
+  return c.json({ authenticated: true, email: session.email });
+});
+
+adminApi.post('/auth/logout', requireAdmin, async (c) => {
+  const token = c.get('sessionToken');
+  await revokeAdminSession(c.env, token);
+  clearAdminCookie(c);
+  await recordAudit(c.env, {
+    actorEmail: c.get('adminEmail'),
+    entityType: 'auth',
+    action: 'logout',
+    summary: 'Admin logged out.'
+  });
+  return c.json({ success: true });
+});
+
+adminApi.use('*', requireAdmin);
+
+adminApi.get('/links', async (c) => {
+  const db = getDb(c.env);
+  const rows = await db.select().from(links).orderBy(asc(links.groupName), asc(links.sortOrder), asc(links.label));
+  return c.json({ items: rows });
+});
+
+adminApi.post('/links', async (c) => {
+  const parsed = linkInputSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const db = getDb(c.env);
+  const now = nowIso();
+  const id = crypto.randomUUID();
+  await db.insert(links).values({
+    id,
+    groupName: parsed.data.groupName,
+    slotKey: parsed.data.slotKey ?? null,
+    label: parsed.data.label,
+    href: parsed.data.href,
+    icon: parsed.data.icon ?? null,
+    style: parsed.data.style ?? null,
+    sortOrder: parsed.data.sortOrder,
+    visible: parsed.data.visible,
+    createdAt: now,
+    updatedAt: now
+  });
+
+  await recordAudit(c.env, {
+    actorEmail: c.get('adminEmail'),
+    entityType: 'link',
+    entityId: id,
+    action: 'create',
+    summary: `Created link "${parsed.data.label}".`,
+    changedFields: Object.keys(parsed.data)
+  });
+
+  return c.json({ success: true, id });
+});
+
+adminApi.patch('/links/:id', async (c) => {
+  const parsed = linkInputSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const db = getDb(c.env);
+  const existing = await db.select().from(links).where(eq(links.id, c.req.param('id'))).limit(1);
+  if (!existing[0]) return c.json({ error: 'Link not found.' }, 404);
+
+  await db
+    .update(links)
+    .set({
+      groupName: parsed.data.groupName,
+      slotKey: parsed.data.slotKey ?? null,
+      label: parsed.data.label,
+      href: parsed.data.href,
+      icon: parsed.data.icon ?? null,
+      style: parsed.data.style ?? null,
+      sortOrder: parsed.data.sortOrder,
+      visible: parsed.data.visible,
+      updatedAt: nowIso()
+    })
+    .where(eq(links.id, c.req.param('id')));
+
+  await recordAudit(c.env, {
+    actorEmail: c.get('adminEmail'),
+    entityType: 'link',
+    entityId: c.req.param('id'),
+    action: 'update',
+    summary: `Updated link "${parsed.data.label}".`,
+    changedFields: Object.keys(parsed.data)
+  });
+
+  return c.json({ success: true });
+});
+
+adminApi.delete('/links/:id', async (c) => {
+  const id = c.req.param('id');
+  const db = getDb(c.env);
+  const rows = await db.select().from(links).where(eq(links.id, id)).limit(1);
+  if (!rows[0]) return c.json({ error: 'Link not found.' }, 404);
+
+  await db.delete(links).where(eq(links.id, id));
+  await recordAudit(c.env, {
+    actorEmail: c.get('adminEmail'),
+    entityType: 'link',
+    entityId: id,
+    action: 'delete',
+    summary: `Deleted link "${rows[0].label}".`
+  });
+  return c.json({ success: true });
+});
+
+adminApi.get('/speaking', async (c) => {
+  const db = getDb(c.env);
+  const rows = await db.select().from(speakingItems).orderBy(asc(speakingItems.date), asc(speakingItems.talkTitle));
+  return c.json({ items: rows });
+});
+
+adminApi.post('/speaking', async (c) => {
+  const parsed = speakingInputSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const db = getDb(c.env);
+  const id = crypto.randomUUID();
+  const now = nowIso();
+  await db.insert(speakingItems).values({
+    id,
+    type: parsed.data.type,
+    date: parsed.data.date,
+    displayDate: parsed.data.displayDate ?? null,
+    city: parsed.data.city ?? null,
+    venue: parsed.data.venue ?? null,
+    venueAddress: parsed.data.venueAddress ?? null,
+    venueMapUrl: parsed.data.venueMapUrl ?? null,
+    talkTitle: parsed.data.talkTitle,
+    topic: parsed.data.topic ?? null,
+    createdAt: now,
+    updatedAt: now
+  });
+
+  await recordAudit(c.env, {
+    actorEmail: c.get('adminEmail'),
+    entityType: 'speaking',
+    entityId: id,
+    action: 'create',
+    summary: `Created speaking item "${parsed.data.talkTitle}".`,
+    changedFields: Object.keys(parsed.data)
+  });
+
+  return c.json({ success: true, id });
+});
+
+adminApi.patch('/speaking/:id', async (c) => {
+  const parsed = speakingInputSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const db = getDb(c.env);
+  const existing = await db.select().from(speakingItems).where(eq(speakingItems.id, c.req.param('id'))).limit(1);
+  if (!existing[0]) return c.json({ error: 'Speaking item not found.' }, 404);
+
+  await db
+    .update(speakingItems)
+    .set({
+      type: parsed.data.type,
+      date: parsed.data.date,
+      displayDate: parsed.data.displayDate ?? null,
+      city: parsed.data.city ?? null,
+      venue: parsed.data.venue ?? null,
+      venueAddress: parsed.data.venueAddress ?? null,
+      venueMapUrl: parsed.data.venueMapUrl ?? null,
+      talkTitle: parsed.data.talkTitle,
+      topic: parsed.data.topic ?? null,
+      updatedAt: nowIso()
+    })
+    .where(eq(speakingItems.id, c.req.param('id')));
+
+  await recordAudit(c.env, {
+    actorEmail: c.get('adminEmail'),
+    entityType: 'speaking',
+    entityId: c.req.param('id'),
+    action: 'update',
+    summary: `Updated speaking item "${parsed.data.talkTitle}".`,
+    changedFields: Object.keys(parsed.data)
+  });
+
+  return c.json({ success: true });
+});
+
+adminApi.delete('/speaking/:id', async (c) => {
+  const id = c.req.param('id');
+  const db = getDb(c.env);
+  const rows = await db.select().from(speakingItems).where(eq(speakingItems.id, id)).limit(1);
+  if (!rows[0]) return c.json({ error: 'Speaking item not found.' }, 404);
+
+  await db.delete(speakingItems).where(eq(speakingItems.id, id));
+  await recordAudit(c.env, {
+    actorEmail: c.get('adminEmail'),
+    entityType: 'speaking',
+    entityId: id,
+    action: 'delete',
+    summary: `Deleted speaking item "${rows[0].talkTitle}".`
+  });
+
+  return c.json({ success: true });
+});
+
+adminApi.get('/blocks/:key', async (c) => {
+  const key = c.req.param('key');
+  if (key === 'site') return c.json(await getManagedSite(c.env, c.req.url));
+  if (key === 'about') return c.json(await getManagedAbout(c.env, c.req.url));
+  if (key === 'legal') return c.json(await getManagedLegal(c.env));
+  return c.json({ error: 'Unknown block key.' }, 404);
+});
+
+adminApi.patch('/blocks/:key', async (c) => {
+  const key = c.req.param('key');
+  const payload = await c.req.json().catch(() => null);
+
+  if (key === 'site') {
+    const parsed = siteDocumentSchema.safeParse(payload);
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    await upsertDocument(c.env, 'site', parsed.data);
+  } else if (key === 'about') {
+    const parsed = aboutDocumentSchema.safeParse(payload);
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    await upsertDocument(c.env, 'about', parsed.data);
+  } else if (key === 'legal') {
+    const parsed = legalDocumentSchema.safeParse(payload);
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    await upsertDocument(c.env, 'legal', parsed.data);
+  } else {
+    return c.json({ error: 'Unknown block key.' }, 404);
+  }
+
+  await recordAudit(c.env, {
+    actorEmail: c.get('adminEmail'),
+    entityType: 'document',
+    entityId: key,
+    action: 'update',
+    summary: `Updated ${key} content.`,
+    changedFields: payload && typeof payload === 'object' ? Object.keys(payload as Record<string, unknown>) : null
+  });
+
+  return c.json({ success: true });
+});
+
+adminApi.get('/analytics', async (c) => c.json(await getAdminAnalytics(c.env)));
+
+export { adminApi };

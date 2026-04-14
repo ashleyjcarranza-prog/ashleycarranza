@@ -8,6 +8,11 @@ const defaultNavigation = [
 
 const jsonCache = new Map();
 let siteDataPromise;
+const apiOverrides = new Map([
+  ['/data/site.json', '/api/content/site'],
+  ['/data/about.json', '/api/content/about'],
+  ['/data/events.json', '/api/content/events']
+]);
 
 export function getSiteBasePath() {
   if (!window.location.hostname.endsWith('github.io')) return '';
@@ -41,19 +46,27 @@ export function stripBasePath(path) {
 }
 
 export async function getJson(path) {
-  const resolvedPath = withBasePath(path);
+  const cacheKey = withBasePath(path);
 
-  if (!jsonCache.has(resolvedPath)) {
+  if (!jsonCache.has(cacheKey)) {
     jsonCache.set(
-      resolvedPath,
-      fetch(resolvedPath, { cache: 'no-cache' }).then((response) => {
-        if (!response.ok) throw new Error(`Failed to fetch ${resolvedPath}`);
-        return response.json();
-      })
+      cacheKey,
+      (async () => {
+        const overridePath = apiOverrides.get(path);
+        if (overridePath) {
+          const overrideResponse = await fetch(withBasePath(overridePath), { cache: 'no-cache' });
+          if (overrideResponse.ok) return overrideResponse.json();
+        }
+
+        const fallbackPath = withBasePath(path);
+        const fallbackResponse = await fetch(fallbackPath, { cache: 'no-cache' });
+        if (!fallbackResponse.ok) throw new Error(`Failed to fetch ${fallbackPath}`);
+        return fallbackResponse.json();
+      })()
     );
   }
 
-  return jsonCache.get(resolvedPath);
+  return jsonCache.get(cacheKey);
 }
 
 export async function getSiteData() {
