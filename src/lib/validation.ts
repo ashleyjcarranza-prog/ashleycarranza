@@ -159,3 +159,13 @@ export const speakingInputSchema = z.object({
   talkTitle: z.string().trim().min(1).max(200),
   topic: z.string().trim().max(300).optional().nullable()
 });
+
+export const authSettingsInputSchema = z.object({
+  email: z.string().trim().email().max(160),
+  currentPassword: z.string().min(1).max(256),
+  newPassword: z
+    .string()
+    .max(128)
+    .default('')
+    .refine((value) => value === '' || value.trim().length >= 12, 'New password must be at least 12 characters.')
+});

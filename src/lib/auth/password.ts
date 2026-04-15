@@ -1,4 +1,5 @@
 const encoder = new TextEncoder();
+const DEFAULT_PBKDF2_ITERATIONS = 100000;
 
 function toBase64Url(bytes: Uint8Array) {
   let binary = '';
@@ -41,7 +42,7 @@ async function pbkdf2(password: string, salt: Uint8Array, iterations: number) {
   return new Uint8Array(bits);
 }
 
-export async function createPasswordHash(password: string, iterations = 310000) {
+export async function createPasswordHash(password: string, iterations = DEFAULT_PBKDF2_ITERATIONS) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const derived = await pbkdf2(password, salt, iterations);
   return `pbkdf2_sha256$${iterations}$${toBase64Url(salt)}$${toBase64Url(derived)}`;
@@ -56,6 +57,10 @@ export async function verifyPassword(password: string, encoded: string) {
 
   const salt = fromBase64Url(saltPart);
   const stored = fromBase64Url(hashPart);
-  const derived = await pbkdf2(password, salt, iterations);
-  return bytesEqual(derived, stored);
+  try {
+    const derived = await pbkdf2(password, salt, iterations);
+    return bytesEqual(derived, stored);
+  } catch {
+    return false;
+  }
 }

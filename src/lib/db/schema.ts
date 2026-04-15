@@ -46,6 +46,14 @@ export const adminSessions = sqliteTable('admin_sessions', {
   updatedAt: text('updated_at').notNull()
 });
 
+export const adminCredentials = sqliteTable('admin_credentials', {
+  key: text('key').primaryKey(),
+  email: text('email').notNull(),
+  passwordHash: text('password_hash').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull()
+});
+
 export const auditLog = sqliteTable('audit_log', {
   id: text('id').primaryKey(),
   actorEmail: text('actor_email').notNull(),
@@ -56,4 +64,3 @@ export const auditLog = sqliteTable('audit_log', {
   changedFields: text('changed_fields'),
   createdAt: text('created_at').notNull()
 });
-

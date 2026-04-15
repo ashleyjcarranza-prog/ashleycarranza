@@ -1,13 +1,14 @@
 import { asc, eq, sql } from 'drizzle-orm';
 import { Hono, type MiddlewareHandler } from 'hono';
+import { getResolvedAdminCredentials, upsertAdminCredentials } from '../lib/auth/credentials';
 import { clearAdminCookie, getAdminSession, issueAdminSession, readAdminCookie, revokeAdminSession, setAdminCookie } from '../lib/auth/session';
-import { verifyPassword } from '../lib/auth/password';
+import { createPasswordHash, verifyPassword } from '../lib/auth/password';
 import { recordAudit } from '../lib/audit';
 import { getAdminAnalytics } from '../lib/analytics';
 import { getManagedAbout, getManagedLegal, getManagedSite, upsertDocument } from '../lib/content';
 import { getDb, nowIso, type AppBindings } from '../lib/db';
-import { links, speakingItems } from '../lib/db/schema';
-import { aboutDocumentSchema, legalDocumentSchema, linkInputSchema, siteDocumentSchema, speakingInputSchema } from '../lib/validation';
+import { adminSessions, links, speakingItems } from '../lib/db/schema';
+import { aboutDocumentSchema, authSettingsInputSchema, legalDocumentSchema, linkInputSchema, siteDocumentSchema, speakingInputSchema } from '../lib/validation';
 
 type AdminEnv = {
   Bindings: AppBindings;
@@ -85,7 +86,9 @@ adminApi.post('/auth/login', async (c) => {
   const allowed = await enforceRateLimit(c.env, normalizedEmail);
   if (!allowed) return c.json({ error: 'Too many login attempts. Try again later.' }, 429);
 
-  if (normalizedEmail !== c.env.ADMIN_EMAIL.trim().toLowerCase()) {
+  const credentials = await getResolvedAdminCredentials(c.env);
+
+  if (normalizedEmail !== credentials.email) {
     await recordAudit(c.env, {
       actorEmail: normalizedEmail,
       entityType: 'auth',
@@ -96,7 +99,7 @@ adminApi.post('/auth/login', async (c) => {
     return c.json({ error: 'Invalid email or password.' }, 401);
   }
 
-  const validPassword = await verifyPassword(body.password, c.env.ADMIN_PASSWORD_HASH);
+  const validPassword = await verifyPassword(body.password, credentials.passwordHash);
   if (!validPassword) {
     await recordAudit(c.env, {
       actorEmail: normalizedEmail,
@@ -144,6 +147,45 @@ adminApi.post('/auth/logout', requireAdmin, async (c) => {
 });
 
 adminApi.use('*', requireAdmin);
+
+adminApi.get('/auth-settings', async (c) => {
+  const credentials = await getResolvedAdminCredentials(c.env);
+  return c.json({ email: credentials.email });
+});
+
+adminApi.patch('/auth-settings', async (c) => {
+  const parsed = authSettingsInputSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const credentials = await getResolvedAdminCredentials(c.env);
+  const validPassword = await verifyPassword(parsed.data.currentPassword, credentials.passwordHash);
+  if (!validPassword) return c.json({ error: 'Current password is incorrect.' }, 400);
+
+  const nextEmail = parsed.data.email.trim().toLowerCase();
+  const nextPasswordHash =
+    parsed.data.newPassword.trim() !== ''
+      ? await createPasswordHash(parsed.data.newPassword.trim())
+      : credentials.passwordHash;
+
+  await upsertAdminCredentials(c.env, nextEmail, nextPasswordHash);
+
+  const db = getDb(c.env);
+  await db.delete(adminSessions);
+
+  const { token, expiresAt } = await issueAdminSession(c.env, nextEmail);
+  setAdminCookie(c, token, expiresAt);
+
+  await recordAudit(c.env, {
+    actorEmail: c.get('adminEmail'),
+    entityType: 'auth',
+    entityId: nextEmail,
+    action: 'credentials_updated',
+    summary: 'Admin access settings updated.',
+    changedFields: ['email', ...(parsed.data.newPassword.trim() !== '' ? ['password'] : [])]
+  });
+
+  return c.json({ success: true, email: nextEmail });
+});
 
 adminApi.get('/links', async (c) => {
   const db = getDb(c.env);

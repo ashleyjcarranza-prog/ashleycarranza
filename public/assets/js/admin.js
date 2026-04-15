@@ -1,5 +1,6 @@
 const state = {
   session: null,
+  authSettings: null,
   links: [],
   speaking: [],
   site: null,
@@ -378,10 +379,12 @@ function renderSiteForms() {
   const siteForm = document.getElementById('site-form');
   const aboutForm = document.getElementById('about-form');
   const legalForm = document.getElementById('legal-form');
+  const authForm = document.getElementById('auth-form');
 
   const site = state.site;
   const about = state.about;
   const legal = state.legal;
+  const authSettings = state.authSettings;
 
   siteForm.innerHTML = `
     <div class="admin-form-grid">
@@ -460,6 +463,30 @@ function renderSiteForms() {
       </div>
     </div>`;
 
+  authForm.innerHTML = `
+    <div class="admin-form-grid">
+      <div class="full">
+        <label class="form-label">Admin Email</label>
+        <input name="email" class="form-control" type="email" value="${escapeHtml(authSettings?.email || '')}" required />
+      </div>
+      <div>
+        <label class="form-label">Current Password</label>
+        <input name="currentPassword" class="form-control" type="password" autocomplete="current-password" required />
+      </div>
+      <div>
+        <label class="form-label">New Password</label>
+        <input name="newPassword" class="form-control" type="password" autocomplete="new-password" />
+        <div class="admin-helper mt-1">Leave blank to keep current password.</div>
+      </div>
+      <div class="full">
+        <label class="form-label">Confirm New Password</label>
+        <input name="confirmPassword" class="form-control" type="password" autocomplete="new-password" />
+      </div>
+      <div class="full d-flex justify-content-end">
+        <button class="ac-btn" type="submit">Save Access Settings</button>
+      </div>
+    </div>`;
+
   bindRepeatList(document.getElementById('site-quick-nav-list'), 'quick-nav');
   bindRepeatList(document.getElementById('about-topics-list'), 'topic');
 }
@@ -530,6 +557,21 @@ function buildLegalPayload(form) {
       body: form.termsBody.value.trim(),
       updatedLabel: form.termsUpdatedLabel.value.trim()
     }
+  };
+}
+
+function buildAuthPayload(form) {
+  const newPassword = form.newPassword.value.trim();
+  const confirmPassword = form.confirmPassword.value.trim();
+
+  if (newPassword !== confirmPassword) {
+    throw new Error('New password confirmation does not match.');
+  }
+
+  return {
+    email: form.email.value.trim(),
+    currentPassword: form.currentPassword.value,
+    newPassword
   };
 }
 
@@ -724,16 +766,31 @@ function bindGlobalEvents() {
     showBanner('success', 'Legal pages saved.');
     await reloadAll();
   });
+
+  document.getElementById('auth-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const payload = buildAuthPayload(event.currentTarget);
+    const result = await api('/api/admin/auth-settings', {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
+    state.session = { ...(state.session || {}), authenticated: true, email: result.email };
+    document.getElementById('admin-email').textContent = result.email;
+    event.currentTarget.reset();
+    showBanner('success', 'Admin access updated.');
+    await reloadAll();
+  });
 }
 
 async function reloadAll() {
-  const [links, speaking, site, about, legal, analytics] = await Promise.all([
+  const [links, speaking, site, about, legal, analytics, authSettings] = await Promise.all([
     api('/api/admin/links'),
     api('/api/admin/speaking'),
     api('/api/admin/blocks/site'),
     api('/api/admin/blocks/about'),
     api('/api/admin/blocks/legal'),
-    api('/api/admin/analytics')
+    api('/api/admin/analytics'),
+    api('/api/admin/auth-settings')
   ]);
 
   state.links = links.items || [];
@@ -742,6 +799,7 @@ async function reloadAll() {
   state.about = about;
   state.legal = legal;
   state.analytics = analytics;
+  state.authSettings = authSettings;
 
   renderOverview();
   renderLinks();

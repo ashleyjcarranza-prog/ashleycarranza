@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { clearAdminCookie, getAdminSession, readAdminCookie } from './lib/auth/session';
 import { writePageview } from './lib/analytics';
 import type { AppBindings } from './lib/db';
 import { adminApi } from './routes/admin';
@@ -14,6 +15,10 @@ type AppEnv = {
 
 const app = new Hono<AppEnv>();
 
+function isAdminPage(pathname: string) {
+  return pathname === '/admin' || pathname === '/admin/' || pathname === '/admin/login' || pathname === '/admin/login/';
+}
+
 function shouldTrackPageview(request: Request, response: Response) {
   if (request.method !== 'GET') return false;
   if (response.status >= 400) return false;
@@ -23,6 +28,23 @@ function shouldTrackPageview(request: Request, response: Response) {
 }
 
 app.use('*', async (c, next) => {
+  const pathname = new URL(c.req.url).pathname;
+
+  if (c.req.method === 'GET' && isAdminPage(pathname)) {
+    const token = readAdminCookie(c);
+    const session = token ? await getAdminSession(c.env, token) : null;
+
+    if (token && !session) clearAdminCookie(c);
+
+    if ((pathname === '/admin' || pathname === '/admin/') && !session) {
+      return c.redirect('/admin/login/', 302);
+    }
+
+    if ((pathname === '/admin/login' || pathname === '/admin/login/') && session) {
+      return c.redirect('/admin/', 302);
+    }
+  }
+
   await next();
   if (shouldTrackPageview(c.req.raw, c.res)) {
     c.executionCtx.waitUntil(writePageview(c.env, new URL(c.req.url).pathname));
@@ -50,4 +72,3 @@ app.all('*', async (c) => {
 });
 
 export default app;
-
