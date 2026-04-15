@@ -12,9 +12,63 @@ const state = {
 };
 
 const editModalEl = document.getElementById('admin-edit-modal');
-const editModal = new bootstrap.Modal(editModalEl);
 const deleteModalEl = document.getElementById('admin-delete-modal');
-const deleteModal = new bootstrap.Modal(deleteModalEl);
+
+function createModalController(element) {
+  if (!element) {
+    return {
+      show() {},
+      hide() {}
+    };
+  }
+
+  let backdrop = null;
+
+  function removeBackdrop() {
+    backdrop?.remove();
+    backdrop = null;
+  }
+
+  function show() {
+    if (element.classList.contains('show')) return;
+    backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show';
+    document.body.append(backdrop);
+    document.body.classList.add('modal-open');
+    element.style.display = 'block';
+    element.removeAttribute('aria-hidden');
+    element.setAttribute('aria-modal', 'true');
+    element.classList.add('show');
+  }
+
+  function hide() {
+    element.classList.remove('show');
+    element.setAttribute('aria-hidden', 'true');
+    element.removeAttribute('aria-modal');
+    element.style.display = 'none';
+    document.body.classList.remove('modal-open');
+    removeBackdrop();
+  }
+
+  element.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (target === element || target.closest('[data-bs-dismiss="modal"]')) {
+      hide();
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && element.classList.contains('show')) {
+      hide();
+    }
+  });
+
+  return { show, hide };
+}
+
+const editModal = createModalController(editModalEl);
+const deleteModal = createModalController(deleteModalEl);
 
 function escapeHtml(value = '') {
   return String(value)
