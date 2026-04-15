@@ -1,12 +1,17 @@
+import { getProductFallbackImage, getProductImageSource, safeHref } from './core/format.js';
+import { assetUrl, withBasePath } from './core/site.js';
+
 const state = {
   session: null,
   authSettings: null,
   links: [],
+  products: [],
   speaking: [],
   site: null,
   about: null,
   legal: null,
   analytics: null,
+  mediaLibrary: [],
   deleteAction: null,
   editing: null
 };
@@ -22,6 +27,7 @@ const SPEAKING_TYPE_LABELS = {
   speaking_engagement: 'Speaking engagement',
   past_appearance: 'Past appearance'
 };
+const PRODUCT_CATEGORY_SUGGESTIONS = ['Academic Writing', 'Creative Works', 'Teaching & Resources'];
 
 const editModalEl = document.getElementById('admin-edit-modal');
 const deleteModalEl = document.getElementById('admin-delete-modal');
@@ -131,10 +137,45 @@ function getRecentItemKindLabel(value) {
   return (
     {
       link: 'link',
+      media: 'image',
       speaking: 'event',
       document: 'page content'
     }[value] || value
   );
+}
+
+function resolveImagePreview(path, fallback = withBasePath('/assets/img/ashley-portrait.svg')) {
+  if (!path) return fallback;
+  return assetUrl(path, fallback);
+}
+
+function getProductPreview(item) {
+  const fallback = withBasePath(getProductFallbackImage(item));
+  const image = assetUrl(getProductImageSource(item), fallback);
+  return { image, fallback };
+}
+
+function getProductStoreLinks(item) {
+  const links = [];
+  if (item.amazonUrl) links.push({ label: 'Amazon', href: item.amazonUrl });
+  if (item.tptUrl) links.push({ label: 'TPT', href: item.tptUrl });
+  return links;
+}
+
+function renderImageField({ name, label, value, helper = '', placeholder = '' }) {
+  return `
+    <div class="full" data-media-field>
+      <label class="form-label">${label}</label>
+      <div class="admin-media-field">
+        <input name="${name}" class="form-control" value="${escapeHtml(value || '')}" placeholder="${escapeHtml(placeholder)}" />
+        <div class="admin-media-actions">
+          <button class="btn-outline btn-sm" type="button" data-media-open="existing">Use Existing</button>
+          <button class="btn-outline btn-sm" type="button" data-media-open="upload">Upload New</button>
+        </div>
+        <div class="admin-media-panel d-none" data-media-panel></div>
+      </div>
+      ${helper ? `<div class="admin-helper mt-1">${helper}</div>` : ''}
+    </div>`;
 }
 
 function setActivePanel(target) {
@@ -156,10 +197,11 @@ function showBanner(type, message) {
 }
 
 async function api(path, options = {}) {
+  const isFormData = options.body instanceof FormData;
   const response = await fetch(path, {
     credentials: 'include',
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(options.headers || {})
     },
     ...options
@@ -230,6 +272,10 @@ function renderOverview() {
   root.innerHTML = `
     <div class="admin-grid">
       <div class="admin-metric-grid">
+        <div class="admin-metric-card">
+          <span class="text-muted-ui small">My Work items</span>
+          <strong>${state.products.length}</strong>
+        </div>
         <div class="admin-metric-card">
           <span class="text-muted-ui small">Buttons & links</span>
           <strong>${analytics.summary.linkCount}</strong>
@@ -371,6 +417,64 @@ function renderLinks() {
               .join('')}
           </tbody>
         </table>
+      </div>
+    </div>`;
+}
+
+function renderProducts() {
+  const root = document.getElementById('products-content');
+  if (!state.products.length) {
+    root.innerHTML = '<div class="admin-empty">No work items yet. Add one to show a book, project, or resource on website.</div>';
+    return;
+  }
+
+  root.innerHTML = `
+    <div class="card-item p-3">
+      <p class="admin-helper mb-3">Best place to manage books, resources, short descriptions, cover images, and store links.</p>
+      <div class="admin-work-grid">
+        ${state.products
+          .map((item) => {
+            const { image, fallback } = getProductPreview(item);
+            const storeLinks = getProductStoreLinks(item);
+            return `
+              <article class="admin-work-card">
+                <div class="admin-work-card-top">
+                  <img class="admin-work-thumb" src="${escapeHtml(image)}" alt="${escapeHtml(
+                    item.imageAlt || `Cover image for ${item.title || 'work item'}`
+                  )}" loading="lazy" onerror="this.onerror=null;this.src='${escapeHtml(fallback)}';" />
+                  <div class="d-grid gap-3">
+                    <div class="d-grid gap-2">
+                      <div class="admin-work-meta">
+                        <span class="admin-tag">${escapeHtml(item.category || 'Work')}</span>
+                        ${item.featured ? '<span class="admin-tag">Featured on homepage</span>' : ''}
+                        ${item.isNew ? '<span class="admin-tag">Marked new</span>' : ''}
+                      </div>
+                      <div>
+                        <h3 class="h5 mb-1">${escapeHtml(item.title || 'Untitled work')}</h3>
+                        <p class="text-muted-ui mb-0">${escapeHtml(item.description || 'No short description yet.')}</p>
+                      </div>
+                    </div>
+                    ${
+                      storeLinks.length
+                        ? `<div class="admin-work-link-list">
+                            ${storeLinks
+                              .map(
+                                (link) =>
+                                  `<a class="btn-outline btn-sm" href="${escapeHtml(safeHref(link.href))}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.label)}</a>`
+                              )
+                              .join('')}
+                          </div>`
+                        : '<p class="admin-helper mb-0">No store links yet.</p>'
+                    }
+                  </div>
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                  <button class="btn-outline btn-sm" data-action="edit-product" data-id="${escapeHtml(item.id)}" type="button">Edit</button>
+                  <button class="btn-outline btn-sm" data-action="delete-product" data-id="${escapeHtml(item.id)}" type="button">Delete</button>
+                </div>
+              </article>`;
+          })
+          .join('')}
       </div>
     </div>`;
 }
@@ -520,10 +624,14 @@ function renderSiteForms() {
           <p>Choose image file path and short description for screen readers.</p>
         </div>
         <div class="admin-form-grid">
-          <div><label class="form-label">Main image path</label><input name="heroImage" class="form-control" value="${escapeHtml(site.home.heroImage || '')}" /></div>
+          ${renderImageField({
+            name: 'heroImage',
+            label: 'Main image path',
+            value: site.home.heroImage || '',
+            helper: 'Use existing image, upload new one, or paste full image link.'
+          })}
           <div><label class="form-label">Image description</label><input name="heroImageAlt" class="form-control" value="${escapeHtml(site.home.heroImageAlt || '')}" /></div>
         </div>
-        <div class="admin-helper">Use site image path like <code>/assets/img/headshot.webp</code>.</div>
       </section>
 
       <section class="admin-form-section">
@@ -605,11 +713,20 @@ function renderSiteForms() {
           <p>Update portrait and supporting image used on About page.</p>
         </div>
         <div class="admin-form-grid">
-          <div><label class="form-label">Portrait image path</label><input name="portrait" class="form-control" value="${escapeHtml(about.portrait || '')}" /></div>
-          <div><label class="form-label">Secondary image path</label><input name="secondaryImage" class="form-control" value="${escapeHtml(about.secondaryImage || '')}" /></div>
+          ${renderImageField({
+            name: 'portrait',
+            label: 'Portrait image path',
+            value: about.portrait || '',
+            helper: 'Choose from library, upload new file, or paste image link.'
+          })}
+          ${renderImageField({
+            name: 'secondaryImage',
+            label: 'Secondary image path',
+            value: about.secondaryImage || '',
+            helper: 'Choose from library, upload new file, or paste image link.'
+          })}
           <div class="full"><label class="form-label">Secondary image description</label><input name="secondaryImageAlt" class="form-control" value="${escapeHtml(about.secondaryImageAlt || '')}" /></div>
         </div>
-        <div class="admin-helper">Use site image path like <code>/assets/img/chill.webp</code>.</div>
       </section>
 
       <section class="admin-form-section">
@@ -813,6 +930,23 @@ function buildAboutPayload(form) {
   };
 }
 
+function buildProductPayload(form, item = null) {
+  return {
+    id: item?.id || crypto.randomUUID(),
+    title: form.title.value.trim(),
+    category: form.category.value.trim(),
+    description: form.description.value.trim(),
+    longDescription: form.longDescription.value.trim(),
+    image: form.image.value.trim(),
+    imageAlt: form.imageAlt.value.trim(),
+    amazonUrl: form.amazonUrl.value.trim(),
+    tptUrl: form.tptUrl.value.trim(),
+    featured: form.featured.value === 'true',
+    isNew: form.isNew.value === 'true',
+    publishDate: form.publishDate.value.trim()
+  };
+}
+
 function buildLegalPayload(form) {
   return {
     privacy: {
@@ -828,6 +962,95 @@ function buildLegalPayload(form) {
       updatedLabel: form.termsUpdatedLabel.value.trim()
     }
   };
+}
+
+async function saveProducts(products, message) {
+  await api('/api/admin/blocks/products', {
+    method: 'PATCH',
+    body: JSON.stringify({ products })
+  });
+
+  showBanner('success', message);
+  editModal.hide();
+  await reloadAll();
+}
+
+function closeMediaPanel(panel) {
+  if (!panel) return;
+  panel.innerHTML = '';
+  panel.classList.add('d-none');
+}
+
+function closeAllMediaPanels(except = null) {
+  document.querySelectorAll('[data-media-panel]').forEach((panel) => {
+    if (panel !== except) closeMediaPanel(panel);
+  });
+}
+
+function renderExistingMediaPanel() {
+  if (!state.mediaLibrary.length) {
+    return `
+      <div class="admin-helper">No saved images yet. Upload one, or paste image link instead.</div>
+      <div class="d-flex justify-content-end">
+        <button class="btn-outline btn-sm" type="button" data-close-media-panel>Close</button>
+      </div>`;
+  }
+
+  return `
+    <div class="d-flex justify-content-between align-items-center gap-2">
+      <p class="admin-helper mb-0">Choose already available image.</p>
+      <button class="btn-outline btn-sm" type="button" data-close-media-panel>Close</button>
+    </div>
+    <div class="admin-media-grid">
+      ${state.mediaLibrary
+        .map(
+          (item) => `
+            <button class="admin-media-option" type="button" data-use-existing-image="${escapeHtml(item.path)}">
+              <img src="${escapeHtml(resolveImagePreview(item.path))}" alt="${escapeHtml(item.label)}" loading="lazy" />
+              <strong>${escapeHtml(item.label)}</strong>
+              <span class="admin-helper">${escapeHtml(item.source || 'Image')}</span>
+            </button>`
+        )
+        .join('')}
+    </div>`;
+}
+
+function renderUploadMediaPanel() {
+  return `
+    <div class="d-flex justify-content-between align-items-center gap-2">
+      <p class="admin-helper mb-0">Upload file, or paste direct image link.</p>
+      <button class="btn-outline btn-sm" type="button" data-close-media-panel>Close</button>
+    </div>
+    <div class="admin-media-upload-grid">
+      <div class="admin-form-section">
+        <div class="admin-section-heading">
+          <h4>Upload File</h4>
+          <p>Image becomes part of your saved library.</p>
+        </div>
+        <div class="d-grid gap-2">
+          <input class="form-control" type="file" accept="image/*" data-upload-file />
+          <button class="ac-btn btn-sm" type="button" data-upload-image>Upload Image</button>
+        </div>
+      </div>
+      <div class="admin-form-section">
+        <div class="admin-section-heading">
+          <h4>Use Link</h4>
+          <p>Paste full image URL instead of uploading file.</p>
+        </div>
+        <div class="d-grid gap-2">
+          <input class="form-control" type="url" placeholder="https://example.com/image.jpg" data-image-url />
+          <button class="btn-outline btn-sm" type="button" data-use-image-url>Use This Link</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function openMediaPanel(wrapper, mode) {
+  const panel = wrapper?.querySelector('[data-media-panel]');
+  if (!panel) return;
+  closeAllMediaPanels(panel);
+  panel.innerHTML = mode === 'upload' ? renderUploadMediaPanel() : renderExistingMediaPanel();
+  panel.classList.remove('d-none');
 }
 
 function buildAuthPayload(form) {
@@ -940,6 +1163,83 @@ function openEditModal(kind, item = null) {
       </div>`;
   }
 
+  if (kind === 'product') {
+    title.textContent = item ? 'Edit Work Item' : 'Add Work Item';
+    form.innerHTML = `
+      <div class="admin-form-stack">
+        <section class="admin-form-section">
+          <div class="admin-section-heading">
+            <h4>Basic Details</h4>
+            <p>Name item, choose category, and write short text visitors will see first.</p>
+          </div>
+          <div class="admin-form-grid">
+            <div class="full"><label class="form-label">Title</label><input name="title" class="form-control" value="${escapeHtml(item?.title || '')}" required /></div>
+            <div>
+              <label class="form-label">Category</label>
+              <input name="category" class="form-control" list="product-category-options" value="${escapeHtml(item?.category || '')}" required />
+              <datalist id="product-category-options">
+                ${PRODUCT_CATEGORY_SUGGESTIONS.map((value) => `<option value="${escapeHtml(value)}"></option>`).join('')}
+              </datalist>
+            </div>
+            <div><label class="form-label">Publish date</label><input name="publishDate" class="form-control" type="date" value="${escapeHtml(item?.publishDate || '')}" /></div>
+            <div class="full"><label class="form-label">Short description</label><textarea name="description" class="form-control" rows="3" required>${escapeHtml(item?.description || '')}</textarea></div>
+          </div>
+        </section>
+
+        <section class="admin-form-section">
+          <div class="admin-section-heading">
+            <h4>Image</h4>
+            <p>Use library image, upload new file, or paste direct image link.</p>
+          </div>
+          <div class="admin-form-grid">
+            ${renderImageField({
+              name: 'image',
+              label: 'Image path or link',
+              value: item?.image || '',
+              helper: 'Uploaded files become part of image library. You can also paste full image URL.'
+            })}
+            <div><label class="form-label">Image description</label><input name="imageAlt" class="form-control" value="${escapeHtml(item?.imageAlt || '')}" /></div>
+          </div>
+        </section>
+
+        <section class="admin-form-section">
+          <div class="admin-section-heading">
+            <h4>More Details</h4>
+            <p>Extra description used on detail view.</p>
+          </div>
+          <div class="admin-form-grid">
+            <div class="full"><label class="form-label">Long description</label><textarea name="longDescription" class="form-control" rows="5">${escapeHtml(item?.longDescription || '')}</textarea></div>
+          </div>
+        </section>
+
+        <section class="admin-form-section">
+          <div class="admin-section-heading">
+            <h4>Store Links</h4>
+            <p>Add storefront links where visitors can buy or open this item.</p>
+          </div>
+          <div class="admin-form-grid">
+            <div><label class="form-label">Amazon link</label><input name="amazonUrl" class="form-control" value="${escapeHtml(item?.amazonUrl || '')}" /></div>
+            <div><label class="form-label">TPT link</label><input name="tptUrl" class="form-control" value="${escapeHtml(item?.tptUrl || '')}" /></div>
+          </div>
+        </section>
+
+        <section class="admin-form-section">
+          <div class="admin-section-heading">
+            <h4>Homepage Options</h4>
+            <p>Choose whether this item gets homepage attention.</p>
+          </div>
+          <div class="admin-form-grid">
+            <div><label class="form-label">Featured on homepage</label><select name="featured" class="form-select"><option value="true" ${item?.featured ? 'selected' : ''}>Yes</option><option value="false" ${item?.featured ? '' : 'selected'}>No</option></select></div>
+            <div><label class="form-label">Show “new” badge</label><select name="isNew" class="form-select"><option value="true" ${item?.isNew ? 'selected' : ''}>Yes</option><option value="false" ${item?.isNew ? '' : 'selected'}>No</option></select></div>
+          </div>
+        </section>
+
+        <div class="full d-flex justify-content-end">
+          <button class="ac-btn" type="submit">${item ? 'Save Work Item' : 'Create Work Item'}</button>
+        </div>
+      </div>`;
+  }
+
   editModal.show();
 }
 
@@ -966,8 +1266,102 @@ function bindGlobalEvents() {
     window.location.replace('/admin/login/');
   });
 
+  document.getElementById('add-product-button').addEventListener('click', () => openEditModal('product'));
   document.getElementById('add-link-button').addEventListener('click', () => openEditModal('link'));
   document.getElementById('add-speaking-button').addEventListener('click', () => openEditModal('speaking'));
+
+  document.addEventListener('click', async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const actionTarget = target.closest(
+      '[data-media-open], [data-close-media-panel], [data-use-existing-image], [data-use-image-url], [data-upload-image]'
+    );
+    if (!(actionTarget instanceof HTMLElement)) return;
+
+    if (actionTarget.matches('[data-media-open]')) {
+      const wrapper = actionTarget.closest('[data-media-field]');
+      if (wrapper) openMediaPanel(wrapper, actionTarget.dataset.mediaOpen || 'existing');
+      return;
+    }
+
+    if (actionTarget.matches('[data-close-media-panel]')) {
+      closeMediaPanel(actionTarget.closest('[data-media-panel]'));
+      return;
+    }
+
+    if (actionTarget.matches('[data-use-existing-image]')) {
+      const panel = actionTarget.closest('[data-media-panel]');
+      const wrapper = actionTarget.closest('[data-media-field]');
+      const input = wrapper?.querySelector('input[name]');
+      if (input) input.value = actionTarget.dataset.useExistingImage || '';
+      closeMediaPanel(panel);
+      return;
+    }
+
+    if (actionTarget.matches('[data-use-image-url]')) {
+      const panel = actionTarget.closest('[data-media-panel]');
+      const wrapper = actionTarget.closest('[data-media-field]');
+      const urlInput = panel?.querySelector('[data-image-url]');
+      const input = wrapper?.querySelector('input[name]');
+      if (input && urlInput instanceof HTMLInputElement) {
+        input.value = urlInput.value.trim();
+      }
+      closeMediaPanel(panel);
+      return;
+    }
+
+    if (actionTarget.matches('[data-upload-image]')) {
+      const panel = actionTarget.closest('[data-media-panel]');
+      const wrapper = actionTarget.closest('[data-media-field]');
+      const fileInput = panel?.querySelector('[data-upload-file]');
+      const input = wrapper?.querySelector('input[name]');
+      const file = fileInput instanceof HTMLInputElement ? fileInput.files?.[0] : null;
+
+      if (!file) {
+        showBanner('danger', 'Choose image file first.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      const result = await api('/api/admin/media', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (input) input.value = result.item?.path || '';
+      state.mediaLibrary = [...state.mediaLibrary.filter((item) => item.path !== result.item?.path), result.item];
+      closeMediaPanel(panel);
+      showBanner('success', 'Image uploaded.');
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.closest('[data-media-field], .admin-nav-link, .admin-shortcut')) return;
+    if (target.closest('#admin-edit-modal, #admin-delete-modal')) return;
+    closeAllMediaPanels();
+  });
+
+  document.getElementById('products-content').addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const id = target.dataset.id;
+    if (!id) return;
+    if (target.dataset.action === 'edit-product') {
+      openEditModal('product', state.products.find((item) => item.id === id));
+    }
+    if (target.dataset.action === 'delete-product') {
+      const item = state.products.find((entry) => entry.id === id);
+      state.deleteAction = async () => {
+        const nextProducts = state.products.filter((entry) => entry.id !== id);
+        await saveProducts(nextProducts, 'Work item removed from website.');
+      };
+      document.getElementById('admin-delete-message').textContent = `Delete "${item?.title || 'this work item'}"? This removes it from website.`;
+      deleteModal.show();
+    }
+  });
 
   document.getElementById('links-content').addEventListener('click', (event) => {
     const target = event.target;
@@ -1020,31 +1414,39 @@ function bindGlobalEvents() {
   document.getElementById('admin-edit-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
-    const payload =
-      state.editing.kind === 'link'
-        ? {
-            groupName: form.groupName.value,
-            slotKey: form.slotKey.value.trim() || null,
-            label: form.label.value.trim(),
-            href: form.href.value.trim(),
-            icon: form.icon.value.trim() || null,
-            style: form.style.value.trim() || null,
-            sortOrder: Number(form.sortOrder.value || 0),
-            visible: form.visible.value === 'true'
-          }
-        : {
-            type: form.type.value,
-            date: form.date.value,
-            displayDate: form.displayDate.value.trim() || null,
-            city: form.city.value.trim() || null,
-            venue: form.venue.value.trim() || null,
-            venueAddress: form.venueAddress.value.trim() || null,
-            venueMapUrl: form.venueMapUrl.value.trim() || null,
-            talkTitle: form.talkTitle.value.trim(),
-            topic: form.topic.value.trim() || null
-          };
+    if (state.editing.kind === 'product') {
+      const nextItem = buildProductPayload(form, state.editing.item);
+      const nextProducts = state.editing.item
+        ? state.products.map((item) => (item.id === state.editing.item.id ? nextItem : item))
+        : [nextItem, ...state.products];
+      await saveProducts(nextProducts, 'My Work saved.');
+      return;
+    }
 
     const isLink = state.editing.kind === 'link';
+    const payload = isLink
+      ? {
+          groupName: form.groupName.value,
+          slotKey: form.slotKey.value.trim() || null,
+          label: form.label.value.trim(),
+          href: form.href.value.trim(),
+          icon: form.icon.value.trim() || null,
+          style: form.style.value.trim() || null,
+          sortOrder: Number(form.sortOrder.value || 0),
+          visible: form.visible.value === 'true'
+        }
+      : {
+          type: form.type.value,
+          date: form.date.value,
+          displayDate: form.displayDate.value.trim() || null,
+          city: form.city.value.trim() || null,
+          venue: form.venue.value.trim() || null,
+          venueAddress: form.venueAddress.value.trim() || null,
+          venueMapUrl: form.venueMapUrl.value.trim() || null,
+          talkTitle: form.talkTitle.value.trim(),
+          topic: form.topic.value.trim() || null
+        };
+
     const path = isLink ? '/api/admin/links' : '/api/admin/speaking';
     const method = state.editing.item ? 'PATCH' : 'POST';
     const finalPath = state.editing.item ? `${path}/${state.editing.item.id}` : path;
@@ -1108,25 +1510,30 @@ function bindGlobalEvents() {
 }
 
 async function reloadAll() {
-  const [links, speaking, site, about, legal, analytics, authSettings] = await Promise.all([
+  const [links, products, speaking, site, about, legal, analytics, authSettings, media] = await Promise.all([
     api('/api/admin/links'),
+    api('/api/admin/blocks/products'),
     api('/api/admin/speaking'),
     api('/api/admin/blocks/site'),
     api('/api/admin/blocks/about'),
     api('/api/admin/blocks/legal'),
     api('/api/admin/analytics'),
-    api('/api/admin/auth-settings')
+    api('/api/admin/auth-settings'),
+    api('/api/admin/media')
   ]);
 
   state.links = links.items || [];
+  state.products = products.products || [];
   state.speaking = speaking.items || [];
   state.site = site;
   state.about = about;
   state.legal = legal;
   state.analytics = analytics;
   state.authSettings = authSettings;
+  state.mediaLibrary = media.items || [];
 
   renderOverview();
+  renderProducts();
   renderLinks();
   renderSpeaking();
   renderSiteForms();

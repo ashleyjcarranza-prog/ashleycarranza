@@ -17,6 +17,7 @@ export type OptionalAnalyticsEngine = {
 export type AppBindings = {
   ASSETS: { fetch: typeof fetch };
   DB: D1Database;
+  MEDIA?: R2Bucket;
   ANALYTICS?: OptionalAnalyticsEngine;
   LOGIN_LIMITER?: OptionalRateLimiter;
   ADMIN_EMAIL: string;
@@ -34,4 +35,3 @@ export function getDb(env: AppBindings) {
 export function nowIso() {
   return new Date().toISOString();
 }
-

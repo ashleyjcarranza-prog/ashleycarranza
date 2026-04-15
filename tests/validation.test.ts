@@ -2,7 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { aboutDocumentSchema, authSettingsInputSchema, legalDocumentSchema, linkInputSchema, siteDocumentSchema, speakingInputSchema } from '../src/lib/validation';
+import {
+  aboutDocumentSchema,
+  authSettingsInputSchema,
+  legalDocumentSchema,
+  linkInputSchema,
+  mediaLibraryDocumentSchema,
+  productsDocumentSchema,
+  siteDocumentSchema,
+  speakingInputSchema
+} from '../src/lib/validation';
 import { defaultLegalDocument } from '../src/lib/content/legal';
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -11,9 +20,11 @@ describe('content validation', () => {
   it('accepts the current site and about data', () => {
     const site = JSON.parse(readFileSync(resolve(rootDir, 'public/data/site.json'), 'utf8'));
     const about = JSON.parse(readFileSync(resolve(rootDir, 'public/data/about.json'), 'utf8'));
+    const products = JSON.parse(readFileSync(resolve(rootDir, 'public/data/products.json'), 'utf8'));
 
     expect(() => siteDocumentSchema.parse(site)).not.toThrow();
     expect(() => aboutDocumentSchema.parse(about)).not.toThrow();
+    expect(() => productsDocumentSchema.parse(products)).not.toThrow();
   });
 
   it('accepts the default legal document', () => {
@@ -53,6 +64,21 @@ describe('content validation', () => {
       email: 'ashleyjcarranza@gmail.com',
       currentPassword: 'current-password',
       newPassword: 'AshleyAdmin!2026Reset'
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts saved image library items with data URLs', () => {
+    const result = mediaLibraryDocumentSchema.safeParse({
+      items: [
+        {
+          id: 'saved-1',
+          label: 'Uploaded Headshot',
+          path: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+          source: 'Saved Upload'
+        }
+      ]
     });
 
     expect(result.success).toBe(true);

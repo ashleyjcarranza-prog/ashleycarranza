@@ -11,7 +11,8 @@ let siteDataPromise;
 const apiOverrides = new Map([
   ['/data/site.json', '/api/content/site'],
   ['/data/about.json', '/api/content/about'],
-  ['/data/events.json', '/api/content/events']
+  ['/data/events.json', '/api/content/events'],
+  ['/data/products.json', '/api/content/products']
 ]);
 
 export function getSiteBasePath() {

@@ -5,10 +5,19 @@ import { clearAdminCookie, getAdminSession, issueAdminSession, readAdminCookie, 
 import { createPasswordHash, verifyPassword } from '../lib/auth/password';
 import { recordAudit } from '../lib/audit';
 import { getAdminAnalytics } from '../lib/analytics';
-import { getManagedAbout, getManagedLegal, getManagedSite, upsertDocument } from '../lib/content';
+import { getManagedAbout, getManagedLegal, getManagedProducts, getManagedSite, upsertDocument } from '../lib/content';
 import { getDb, nowIso, type AppBindings } from '../lib/db';
 import { adminSessions, links, speakingItems } from '../lib/db/schema';
-import { aboutDocumentSchema, authSettingsInputSchema, legalDocumentSchema, linkInputSchema, siteDocumentSchema, speakingInputSchema } from '../lib/validation';
+import { listImageLibrary, uploadImage } from '../lib/media';
+import {
+  aboutDocumentSchema,
+  authSettingsInputSchema,
+  legalDocumentSchema,
+  linkInputSchema,
+  productsDocumentSchema,
+  siteDocumentSchema,
+  speakingInputSchema
+} from '../lib/validation';
 
 type AdminEnv = {
   Bindings: AppBindings;
@@ -151,6 +160,28 @@ adminApi.use('*', requireAdmin);
 adminApi.get('/auth-settings', async (c) => {
   const credentials = await getResolvedAdminCredentials(c.env);
   return c.json({ email: credentials.email });
+});
+
+adminApi.get('/media', async (c) => c.json(await listImageLibrary(c.env, c.req.url)));
+
+adminApi.post('/media', async (c) => {
+  const formData = await c.req.formData().catch(() => null);
+  const file = formData?.get('file');
+  if (!(file instanceof File)) return c.json({ error: 'Image file is required.' }, 400);
+
+  try {
+    const item = await uploadImage(c.env, file);
+    await recordAudit(c.env, {
+      actorEmail: c.get('adminEmail'),
+      entityType: 'media',
+      entityId: item.id,
+      action: 'upload',
+      summary: `Uploaded image "${file.name}".`
+    });
+    return c.json({ success: true, item });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Unable to upload image.' }, 400);
+  }
 });
 
 adminApi.patch('/auth-settings', async (c) => {
@@ -376,6 +407,7 @@ adminApi.get('/blocks/:key', async (c) => {
   const key = c.req.param('key');
   if (key === 'site') return c.json(await getManagedSite(c.env, c.req.url));
   if (key === 'about') return c.json(await getManagedAbout(c.env, c.req.url));
+  if (key === 'products') return c.json(await getManagedProducts(c.env, c.req.url));
   if (key === 'legal') return c.json(await getManagedLegal(c.env));
   return c.json({ error: 'Unknown block key.' }, 404);
 });
@@ -392,6 +424,10 @@ adminApi.patch('/blocks/:key', async (c) => {
     const parsed = aboutDocumentSchema.safeParse(payload);
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     await upsertDocument(c.env, 'about', parsed.data);
+  } else if (key === 'products') {
+    const parsed = productsDocumentSchema.safeParse(payload);
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    await upsertDocument(c.env, 'products', parsed.data);
   } else if (key === 'legal') {
     const parsed = legalDocumentSchema.safeParse(payload);
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);

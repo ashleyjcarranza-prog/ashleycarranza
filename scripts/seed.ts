@@ -3,7 +3,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defaultLegalDocument } from '../src/lib/content/legal';
-import { aboutDocumentSchema, eventsMetaSchema, siteDocumentSchema } from '../src/lib/validation';
+import { aboutDocumentSchema, eventsMetaSchema, productsDocumentSchema, siteDocumentSchema } from '../src/lib/validation';
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dataDir = resolve(rootDir, 'public/data');
@@ -39,6 +39,7 @@ async function readJson<T>(name: string): Promise<T> {
 export async function buildSeedSql() {
   const site = siteDocumentSchema.parse(await readJson<JsonObject>('site.json'));
   const about = aboutDocumentSchema.parse(await readJson<JsonObject>('about.json'));
+  const products = productsDocumentSchema.parse(await readJson<JsonObject>('products.json'));
   const events = (await readJson<{ timezone: string; events: Array<Record<string, unknown>> }>('events.json')) ?? { timezone: 'America/Los_Angeles', events: [] };
   const timezone = eventsMetaSchema.parse({ timezone: events.timezone }).timezone;
 
@@ -138,6 +139,12 @@ export async function buildSeedSql() {
       updated_at: now
     }),
     insert('content_documents', {
+      key: 'products',
+      body: JSON.stringify(products),
+      created_at: now,
+      updated_at: now
+    }),
+    insert('content_documents', {
       key: 'legal',
       body: JSON.stringify(defaultLegalDocument),
       created_at: now,
@@ -154,7 +161,7 @@ export async function buildSeedSql() {
       entity_id: 'initial-import',
       action: 'seed_import',
       summary: 'Imported public JSON content into D1.',
-      changed_fields: JSON.stringify(['site', 'about', 'events_meta', 'legal', 'links', 'speaking_items']),
+      changed_fields: JSON.stringify(['site', 'about', 'products', 'events_meta', 'legal', 'links', 'speaking_items']),
       created_at: now
     })
   );

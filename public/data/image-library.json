@@ -1,0 +1,34 @@
+{
+  "items": [
+    {
+      "id": "headshot",
+      "label": "Headshot",
+      "path": "/assets/img/headshot.webp",
+      "source": "Site Library"
+    },
+    {
+      "id": "reading-photo",
+      "label": "Reading Photo",
+      "path": "/assets/img/chill.webp",
+      "source": "Site Library"
+    },
+    {
+      "id": "portrait-illustration",
+      "label": "Portrait Illustration",
+      "path": "/assets/img/ashley-portrait.svg",
+      "source": "Site Library"
+    },
+    {
+      "id": "book-placeholder",
+      "label": "Book Placeholder",
+      "path": "/assets/img/product-book.svg",
+      "source": "Site Library"
+    },
+    {
+      "id": "creative-placeholder",
+      "label": "Creative Placeholder",
+      "path": "/assets/img/product-coloring.svg",
+      "source": "Site Library"
+    }
+  ]
+}

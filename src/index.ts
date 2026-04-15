@@ -3,6 +3,7 @@ import { clearAdminCookie, getAdminSession, readAdminCookie } from './lib/auth/s
 import { writePageview } from './lib/analytics';
 import type { AppBindings } from './lib/db';
 import { adminApi } from './routes/admin';
+import { mediaApi } from './routes/media';
 import { publicApi } from './routes/public';
 
 type AppEnv = {
@@ -53,6 +54,7 @@ app.use('*', async (c, next) => {
 
 app.route('/api/content', publicApi);
 app.route('/api/admin', adminApi);
+app.route('/media', mediaApi);
 
 app.onError((error, c) => {
   console.error(error);

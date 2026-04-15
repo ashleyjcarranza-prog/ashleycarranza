@@ -14,13 +14,18 @@ const internalPathSchema = z
   .trim()
   .regex(/^\/[^\s]*$/, 'Must be a site-relative path that starts with "/".');
 
+const dataImageSchema = z
+  .string()
+  .trim()
+  .regex(/^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=\s]+$/i, 'Must be a valid image data URL.');
+
 const mailtoSchema = z
   .string()
   .trim()
   .regex(/^mailto:[^\s@]+@[^\s@]+\.[^\s@]+$/i, 'Must be a valid mailto link.');
 
 const hrefSchema = z.union([httpUrlSchema, internalPathSchema, mailtoSchema]);
-const assetPathSchema = z.union([httpUrlSchema, internalPathSchema]);
+const assetPathSchema = z.union([httpUrlSchema, internalPathSchema, dataImageSchema]);
 const optionalHrefSchema = z.union([hrefSchema, z.literal('')]).optional().default('');
 
 const navItemSchema = z.object({
@@ -123,6 +128,42 @@ export const aboutDocumentSchema = z
 
 export const eventsMetaSchema = z.object({
   timezone: z.string().trim().min(1).max(80).default('America/Los_Angeles')
+});
+
+const optionalHttpUrlSchema = z.union([httpUrlSchema, z.literal('')]).default('');
+const optionalAssetPathSchema = z.union([assetPathSchema, z.literal('')]).default('');
+const optionalDateSchema = z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal('')]).default('');
+
+export const productItemSchema = z
+  .object({
+    id: z.string().trim().min(1).max(120),
+    title: z.string().trim().min(1).max(180),
+    description: z.string().trim().min(1).max(320),
+    longDescription: z.string().trim().max(3000).default(''),
+    category: z.string().trim().min(1).max(120),
+    image: optionalAssetPathSchema,
+    imageAlt: z.string().trim().max(180).default(''),
+    amazonUrl: optionalHttpUrlSchema,
+    tptUrl: optionalHttpUrlSchema,
+    featured: z.coerce.boolean().default(false),
+    isNew: z.coerce.boolean().default(false),
+    publishDate: optionalDateSchema
+  })
+  .passthrough();
+
+export const productsDocumentSchema = z.object({
+  products: z.array(productItemSchema).default([])
+});
+
+export const mediaLibraryItemSchema = z.object({
+  id: z.string().trim().min(1).max(120),
+  label: z.string().trim().min(1).max(160),
+  path: assetPathSchema,
+  source: z.string().trim().min(1).max(80)
+});
+
+export const mediaLibraryDocumentSchema = z.object({
+  items: z.array(mediaLibraryItemSchema).default([])
 });
 
 export const legalPageSchema = z.object({

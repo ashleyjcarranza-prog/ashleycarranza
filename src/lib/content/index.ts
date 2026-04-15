@@ -6,6 +6,7 @@ import {
   eventsMetaSchema,
   legalDocumentSchema,
   linkGroupSchema,
+  productsDocumentSchema,
   siteDocumentSchema,
   type LinkGroup
 } from '../validation';
@@ -141,6 +142,13 @@ export async function getManagedEvents(env: AppBindings, requestUrl: string) {
 export async function getManagedLegal(env: AppBindings) {
   const raw = await readDocumentBody(env, 'legal');
   return raw ? legalDocumentSchema.parse(JSON.parse(raw)) : defaultLegalDocument;
+}
+
+export async function getManagedProducts(env: AppBindings, requestUrl: string) {
+  const raw = await readDocumentBody(env, 'products');
+  return raw
+    ? productsDocumentSchema.parse(JSON.parse(raw))
+    : productsDocumentSchema.parse(await getAssetJson(env, requestUrl, '/data/products.json'));
 }
 
 export async function upsertDocument<T>(env: AppBindings, key: string, value: T) {
