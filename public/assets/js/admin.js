@@ -11,6 +11,18 @@ const state = {
   editing: null
 };
 
+const DEFAULT_PANEL = 'site';
+const LINK_GROUP_LABELS = {
+  hero_cta: 'Homepage buttons',
+  professional: 'About page links',
+  social: 'Social links'
+};
+const SPEAKING_TYPE_LABELS = {
+  upcoming_conference: 'Upcoming conference',
+  speaking_engagement: 'Speaking engagement',
+  past_appearance: 'Past appearance'
+};
+
 const editModalEl = document.getElementById('admin-edit-modal');
 const deleteModalEl = document.getElementById('admin-delete-modal');
 
@@ -107,6 +119,33 @@ function formatDate(value) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
+function getLinkGroupLabel(value) {
+  return LINK_GROUP_LABELS[value] || value;
+}
+
+function getSpeakingTypeLabel(value) {
+  return SPEAKING_TYPE_LABELS[value] || value;
+}
+
+function getRecentItemKindLabel(value) {
+  return (
+    {
+      link: 'link',
+      speaking: 'event',
+      document: 'page content'
+    }[value] || value
+  );
+}
+
+function setActivePanel(target) {
+  document.querySelectorAll('.admin-nav-link').forEach((entry) => {
+    entry.classList.toggle('is-active', entry.dataset.target === target);
+  });
+  document.querySelectorAll('.admin-panel').forEach((panel) => {
+    panel.classList.toggle('is-active', panel.dataset.panel === target);
+  });
+}
+
 function showBanner(type, message) {
   const banner = document.getElementById('admin-banner');
   banner.className = `alert alert-${type}`;
@@ -184,7 +223,7 @@ function renderOverview() {
   const root = document.getElementById('overview-content');
   const analytics = state.analytics;
   if (!analytics) {
-    root.innerHTML = '<div class="admin-empty">Unable to load dashboard.</div>';
+    root.innerHTML = '<div class="admin-empty">Unable to load site activity.</div>';
     return;
   }
 
@@ -192,63 +231,27 @@ function renderOverview() {
     <div class="admin-grid">
       <div class="admin-metric-grid">
         <div class="admin-metric-card">
-          <span class="text-muted-ui small">Links</span>
+          <span class="text-muted-ui small">Buttons & links</span>
           <strong>${analytics.summary.linkCount}</strong>
         </div>
         <div class="admin-metric-card">
-          <span class="text-muted-ui small">Speaking Items</span>
+          <span class="text-muted-ui small">Events & appearances</span>
           <strong>${analytics.summary.speakingCount}</strong>
         </div>
         <div class="admin-metric-card">
-          <span class="text-muted-ui small">Managed Docs</span>
+          <span class="text-muted-ui small">Editable page groups</span>
           <strong>${analytics.summary.documentCount}</strong>
         </div>
         <div class="admin-metric-card">
-          <span class="text-muted-ui small">Last Content Update</span>
+          <span class="text-muted-ui small">Last update</span>
           <strong class="fs-6">${escapeHtml(formatDate(analytics.summary.lastUpdated))}</strong>
         </div>
       </div>
 
       <div class="row g-4">
         <div class="col-lg-6">
-          <div class="admin-chart-card h-100">
-            <h3 class="h5 mb-3">Counts by Link Group</h3>
-            ${renderBarList(analytics.countsByLinkGroup, 'No managed links yet.')}
-          </div>
-        </div>
-        <div class="col-lg-6">
-          <div class="admin-chart-card h-100">
-            <h3 class="h5 mb-3">Counts by Speaking Type</h3>
-            ${renderBarList(analytics.countsBySpeakingType, 'No speaking entries yet.')}
-          </div>
-        </div>
-      </div>
-
-      <div class="row g-4">
-        <div class="col-lg-6">
-          <div class="admin-chart-card h-100">
-            <h3 class="h5 mb-3">Content Changes, Last 30 Days</h3>
-            ${renderSparkbars(analytics.changeSeries)}
-          </div>
-        </div>
-        <div class="col-lg-6">
           <div class="admin-list-card h-100">
-            <h3 class="h5 mb-3">Top Pages</h3>
-            ${
-              analytics.trafficTopPages
-                ? `<ul>${analytics.trafficTopPages
-                    .map((item) => `<li><strong>${escapeHtml(item.path)}</strong><br /><span class="text-muted-ui small">${item.count} views</span></li>`)
-                    .join('')}</ul>`
-                : '<p class="admin-helper mb-0">Traffic analytics hidden until Cloudflare analytics query credentials are configured.</p>'
-            }
-          </div>
-        </div>
-      </div>
-
-      <div class="row g-4">
-        <div class="col-lg-6">
-          <div class="admin-list-card h-100">
-            <h3 class="h5 mb-3">Recent Admin Activity</h3>
+            <h3 class="h5 mb-3">Recent Changes</h3>
             <ul>
               ${analytics.recentActivity
                 .map(
@@ -264,14 +267,14 @@ function renderOverview() {
         </div>
         <div class="col-lg-6">
           <div class="admin-list-card h-100">
-            <h3 class="h5 mb-3">Recently Updated Items</h3>
+            <h3 class="h5 mb-3">Recently Updated</h3>
             <ul>
               ${analytics.recentlyUpdatedItems
                 .map(
                   (item) => `
                     <li>
                       <strong>${escapeHtml(item.title)}</strong><br />
-                      <span class="text-muted-ui small">${escapeHtml(item.kind)} &middot; ${escapeHtml(formatDate(item.updatedAt))}</span>
+                      <span class="text-muted-ui small">${escapeHtml(getRecentItemKindLabel(item.kind))} &middot; ${escapeHtml(formatDate(item.updatedAt))}</span>
                     </li>`
                 )
                 .join('')}
@@ -279,26 +282,74 @@ function renderOverview() {
           </div>
         </div>
       </div>
+
+      <details class="admin-disclosure">
+        <summary>See detailed activity</summary>
+        <div class="admin-disclosure-body">
+          <div class="row g-4">
+            <div class="col-lg-6">
+              <div class="admin-chart-card h-100">
+                <h3 class="h5 mb-3">Buttons & Links by Area</h3>
+                ${renderBarList(
+                  analytics.countsByLinkGroup.map((item) => ({ ...item, label: getLinkGroupLabel(item.label) })),
+                  'No managed links yet.'
+                )}
+              </div>
+            </div>
+            <div class="col-lg-6">
+              <div class="admin-chart-card h-100">
+                <h3 class="h5 mb-3">Speaking Items by Type</h3>
+                ${renderBarList(
+                  analytics.countsBySpeakingType.map((item) => ({ ...item, label: getSpeakingTypeLabel(item.label) })),
+                  'No speaking entries yet.'
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-4 mt-1">
+            <div class="col-lg-6">
+              <div class="admin-chart-card h-100">
+                <h3 class="h5 mb-3">Changes in Last 30 Days</h3>
+                ${renderSparkbars(analytics.changeSeries)}
+              </div>
+            </div>
+            <div class="col-lg-6">
+              <div class="admin-list-card h-100">
+                <h3 class="h5 mb-3">Top Pages</h3>
+                ${
+                  analytics.trafficTopPages
+                    ? `<ul>${analytics.trafficTopPages
+                        .map((item) => `<li><strong>${escapeHtml(item.path)}</strong><br /><span class="text-muted-ui small">${item.count} views</span></li>`)
+                        .join('')}</ul>`
+                    : '<p class="admin-helper mb-0">Traffic detail is not available yet.</p>'
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
     </div>`;
 }
 
 function renderLinks() {
   const root = document.getElementById('links-content');
   if (!state.links.length) {
-    root.innerHTML = '<div class="admin-empty">No links yet. Add a managed link to get started.</div>';
+    root.innerHTML = '<div class="admin-empty">No links yet. Add one to place a button or link on website.</div>';
     return;
   }
 
   root.innerHTML = `
     <div class="card-item p-3">
+      <p class="admin-helper mb-3">Use this section for homepage buttons, About page links, and social destinations.</p>
       <div class="table-responsive">
         <table class="admin-data-table">
           <thead>
             <tr>
-              <th>Group</th>
-              <th>Label</th>
-              <th>Target</th>
-              <th>Visible</th>
+              <th>Where It Shows</th>
+              <th>Link Text</th>
+              <th>Destination</th>
+              <th>Show on Site</th>
               <th></th>
             </tr>
           </thead>
@@ -307,7 +358,7 @@ function renderLinks() {
               .map(
                 (item) => `
                   <tr>
-                    <td>${escapeHtml(item.groupName)}</td>
+                    <td>${escapeHtml(getLinkGroupLabel(item.groupName))}</td>
                     <td><strong>${escapeHtml(item.label)}</strong>${item.slotKey ? `<br /><span class="text-muted-ui small">${escapeHtml(item.slotKey)}</span>` : ''}</td>
                     <td><a href="${escapeHtml(item.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.href)}</a></td>
                     <td>${item.visible ? 'Yes' : 'No'}</td>
@@ -327,20 +378,21 @@ function renderLinks() {
 function renderSpeaking() {
   const root = document.getElementById('speaking-content');
   if (!state.speaking.length) {
-    root.innerHTML = '<div class="admin-empty">No speaking entries yet. Add one to populate the public page.</div>';
+    root.innerHTML = '<div class="admin-empty">No events yet. Add one to show it on website.</div>';
     return;
   }
 
   root.innerHTML = `
     <div class="card-item p-3">
+      <p class="admin-helper mb-3">Add upcoming events, speaking engagements, and past appearances visitors should see.</p>
       <div class="table-responsive">
         <table class="admin-data-table">
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Title</th>
+              <th>Date Shown</th>
+              <th>Event Title</th>
               <th>Type</th>
-              <th>City</th>
+              <th>Location</th>
               <th></th>
             </tr>
           </thead>
@@ -351,8 +403,8 @@ function renderSpeaking() {
                   <tr>
                     <td>${escapeHtml(item.displayDate || item.date)}</td>
                     <td><strong>${escapeHtml(item.talkTitle)}</strong>${item.venue ? `<br /><span class="text-muted-ui small">${escapeHtml(item.venue)}</span>` : ''}</td>
-                    <td>${escapeHtml(item.type)}</td>
-                    <td>${escapeHtml(item.city || '')}</td>
+                    <td>${escapeHtml(getSpeakingTypeLabel(item.type))}</td>
+                    <td>${escapeHtml(item.city || item.venueAddress || '')}</td>
                     <td class="text-end">
                       <button class="btn-outline btn-sm me-2" data-action="edit-speaking" data-id="${item.id}" type="button">Edit</button>
                       <button class="btn-outline btn-sm" data-action="delete-speaking" data-id="${item.id}" type="button">Delete</button>
@@ -372,21 +424,21 @@ function repeatListMarkup(items, type) {
       (item, index) => `
         <div class="admin-repeat-item" data-repeat-item data-type="${type}">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <strong>${type === 'quick-nav' ? `Quick Nav ${index + 1}` : `Topic ${index + 1}`}</strong>
+            <strong>${type === 'quick-nav' ? `Featured Shortcut ${index + 1}` : `Speaking Topic ${index + 1}`}</strong>
             <button class="btn-outline btn-sm" type="button" data-remove-repeat>Remove</button>
           </div>
           ${
             type === 'quick-nav'
               ? `
                 <div class="admin-form-grid">
-                  <div><label class="form-label">Title</label><input class="form-control" data-field="title" value="${escapeHtml(item.title || '')}" /></div>
-                  <div><label class="form-label">Link Text</label><input class="form-control" data-field="linkText" value="${escapeHtml(item.linkText || '')}" /></div>
-                  <div class="full"><label class="form-label">Description</label><textarea class="form-control" rows="3" data-field="description">${escapeHtml(item.description || '')}</textarea></div>
-                  <div class="full"><label class="form-label">Href</label><input class="form-control" data-field="href" value="${escapeHtml(item.href || '')}" /></div>
+                  <div><label class="form-label">Shortcut title</label><input class="form-control" data-field="title" value="${escapeHtml(item.title || '')}" /></div>
+                  <div><label class="form-label">Button text</label><input class="form-control" data-field="linkText" value="${escapeHtml(item.linkText || '')}" /></div>
+                  <div class="full"><label class="form-label">Short description</label><textarea class="form-control" rows="3" data-field="description">${escapeHtml(item.description || '')}</textarea></div>
+                  <div class="full"><label class="form-label">Button link</label><input class="form-control" data-field="href" value="${escapeHtml(item.href || '')}" /></div>
                 </div>`
               : `
                 <div class="admin-form-grid">
-                  <div class="full"><label class="form-label">Title</label><input class="form-control" data-field="title" value="${escapeHtml(item.title || '')}" /></div>
+                  <div class="full"><label class="form-label">Topic title</label><input class="form-control" data-field="title" value="${escapeHtml(item.title || '')}" /></div>
                   <div class="full"><label class="form-label">Description</label><textarea class="form-control" rows="3" data-field="description">${escapeHtml(item.description || '')}</textarea></div>
                 </div>`
           }
@@ -434,110 +486,274 @@ function renderSiteForms() {
   const aboutForm = document.getElementById('about-form');
   const legalForm = document.getElementById('legal-form');
   const authForm = document.getElementById('auth-form');
+  const siteLastUpdated = document.getElementById('site-last-updated');
 
   const site = state.site;
   const about = state.about;
   const legal = state.legal;
   const authSettings = state.authSettings;
+  const analytics = state.analytics;
+
+  if (siteLastUpdated) {
+    siteLastUpdated.textContent = analytics?.summary?.lastUpdated
+      ? `Last website update: ${formatDate(analytics.summary.lastUpdated)}`
+      : 'Last website update unavailable';
+  }
 
   siteForm.innerHTML = `
-    <div class="admin-form-grid">
-      <div><label class="form-label">Site Name</label><input name="siteName" class="form-control" value="${escapeHtml(site.siteName || '')}" /></div>
-      <div><label class="form-label">Domain</label><input name="domain" class="form-control" value="${escapeHtml(site.domain || '')}" /></div>
-      <div><label class="form-label">Contact Email</label><input name="contactEmail" class="form-control" type="email" value="${escapeHtml(site.contactEmail || '')}" /></div>
-      <div><label class="form-label">Hero Eyebrow</label><input name="heroEyebrow" class="form-control" value="${escapeHtml(site.home.heroEyebrow || '')}" /></div>
-      <div><label class="form-label">Hero Heading</label><input name="heroHeading" class="form-control" value="${escapeHtml(site.home.heroHeading || '')}" /></div>
-      <div><label class="form-label">Hero Image</label><input name="heroImage" class="form-control" value="${escapeHtml(site.home.heroImage || '')}" /></div>
-      <div class="full"><label class="form-label">Hero Image Alt</label><input name="heroImageAlt" class="form-control" value="${escapeHtml(site.home.heroImageAlt || '')}" /></div>
-      <div class="full"><label class="form-label">Hero Subheading</label><textarea name="heroSubheading" class="form-control" rows="4">${escapeHtml(site.home.heroSubheading || '')}</textarea></div>
-      <div><label class="form-label">Hero Details</label><textarea name="heroDetails" class="form-control" rows="5">${escapeHtml(arrayToLines(site.home.heroDetails || []))}</textarea><div class="admin-helper mt-1">One item per line.</div></div>
-      <div><label class="form-label">Proof Items</label><textarea name="proofItems" class="form-control" rows="5">${escapeHtml(arrayToLines(site.home.proofItems || []))}</textarea><div class="admin-helper mt-1">One item per line.</div></div>
-      <div><label class="form-label">Featured Products</label><input name="featuredProducts" class="form-control" type="number" min="1" max="12" value="${escapeHtml(site.home.featuredProducts || 3)}" /></div>
-      <div><label class="form-label">Featured Events</label><input name="featuredEvents" class="form-control" type="number" min="1" max="12" value="${escapeHtml(site.home.featuredEvents || 2)}" /></div>
-      <div><label class="form-label">Featured Posts</label><input name="featuredPosts" class="form-control" type="number" min="1" max="12" value="${escapeHtml(site.home.featuredPosts || 2)}" /></div>
-      <div class="full">
-        <label class="form-label">Quick Navigation</label>
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="admin-helper">Manage homepage quick-nav cards.</span>
-          <button class="btn-outline btn-sm" type="button" data-add-repeat>Add Card</button>
+    <div class="admin-form-stack">
+      <section class="admin-form-section">
+        <div class="admin-section-heading">
+          <h4>Intro</h4>
+          <p>Update headline and short intro visitors see first.</p>
         </div>
-        <div id="site-quick-nav-list" class="admin-repeat-list">${repeatListMarkup(site.home.quickNav || [], 'quick-nav')}</div>
-      </div>
+        <div class="admin-form-grid">
+          <div><label class="form-label">Small text above headline</label><input name="heroEyebrow" class="form-control" value="${escapeHtml(site.home.heroEyebrow || '')}" /></div>
+          <div><label class="form-label">Main headline</label><input name="heroHeading" class="form-control" value="${escapeHtml(site.home.heroHeading || '')}" /></div>
+          <div class="full"><label class="form-label">Intro paragraph</label><textarea name="heroSubheading" class="form-control" rows="4">${escapeHtml(site.home.heroSubheading || '')}</textarea></div>
+        </div>
+      </section>
+
+      <section class="admin-form-section">
+        <div class="admin-section-heading">
+          <h4>Main Image</h4>
+          <p>Choose image file path and short description for screen readers.</p>
+        </div>
+        <div class="admin-form-grid">
+          <div><label class="form-label">Main image path</label><input name="heroImage" class="form-control" value="${escapeHtml(site.home.heroImage || '')}" /></div>
+          <div><label class="form-label">Image description</label><input name="heroImageAlt" class="form-control" value="${escapeHtml(site.home.heroImageAlt || '')}" /></div>
+        </div>
+        <div class="admin-helper">Use site image path like <code>/assets/img/headshot.webp</code>.</div>
+      </section>
+
+      <section class="admin-form-section">
+        <div class="admin-section-heading">
+          <h4>Highlights</h4>
+          <p>Short lines that help visitors understand key work at a glance.</p>
+        </div>
+        <div class="admin-form-grid">
+          <div><label class="form-label">Quick facts</label><textarea name="heroDetails" class="form-control" rows="5">${escapeHtml(arrayToLines(site.home.heroDetails || []))}</textarea><div class="admin-helper mt-1">One item per line.</div></div>
+          <div><label class="form-label">Highlights</label><textarea name="proofItems" class="form-control" rows="5">${escapeHtml(arrayToLines(site.home.proofItems || []))}</textarea><div class="admin-helper mt-1">One item per line.</div></div>
+        </div>
+      </section>
+
+      <section class="admin-form-section">
+        <div class="admin-section-heading">
+          <h4>Featured Shortcuts</h4>
+          <p>Small cards on homepage that guide visitors to important pages.</p>
+        </div>
+        <div class="admin-repeat-field">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="admin-helper">Add, remove, or rewrite homepage shortcuts.</span>
+            <button class="btn-outline btn-sm" type="button" data-add-repeat>Add Shortcut</button>
+          </div>
+          <div id="site-quick-nav-list" class="admin-repeat-list">${repeatListMarkup(site.home.quickNav || [], 'quick-nav')}</div>
+        </div>
+      </section>
+
+      <details class="admin-disclosure">
+        <summary>More homepage options</summary>
+        <div class="admin-disclosure-body">
+          <section class="admin-form-section">
+            <div class="admin-section-heading">
+              <h4>Website Basics</h4>
+              <p>Shared details used across website.</p>
+            </div>
+            <div class="admin-form-grid">
+              <div><label class="form-label">Site name</label><input name="siteName" class="form-control" value="${escapeHtml(site.siteName || '')}" /></div>
+              <div><label class="form-label">Website address</label><input name="domain" class="form-control" value="${escapeHtml(site.domain || '')}" /></div>
+              <div class="full"><label class="form-label">Contact email</label><input name="contactEmail" class="form-control" type="email" value="${escapeHtml(site.contactEmail || '')}" /></div>
+            </div>
+          </section>
+
+          <section class="admin-form-section">
+            <div class="admin-section-heading">
+              <h4>Homepage Counts</h4>
+              <p>Choose how many items homepage should highlight.</p>
+            </div>
+            <div class="admin-form-grid">
+              <div><label class="form-label">Books to show</label><input name="featuredProducts" class="form-control" type="number" min="1" max="12" value="${escapeHtml(site.home.featuredProducts || 3)}" /></div>
+              <div><label class="form-label">Events to show</label><input name="featuredEvents" class="form-control" type="number" min="1" max="12" value="${escapeHtml(site.home.featuredEvents || 2)}" /></div>
+              <div><label class="form-label">Posts to show</label><input name="featuredPosts" class="form-control" type="number" min="1" max="12" value="${escapeHtml(site.home.featuredPosts || 2)}" /></div>
+            </div>
+          </section>
+        </div>
+      </details>
+
       <div class="full d-flex justify-content-end">
-        <button class="ac-btn" type="submit">Save Site Content</button>
+        <button class="ac-btn" type="submit">Save Home Page</button>
       </div>
     </div>`;
 
   aboutForm.innerHTML = `
-    <div class="admin-form-grid">
-      <div><label class="form-label">Headline</label><input name="headline" class="form-control" value="${escapeHtml(about.headline || '')}" /></div>
-      <div><label class="form-label">Tagline</label><input name="tagline" class="form-control" value="${escapeHtml(about.tagline || '')}" /></div>
-      <div><label class="form-label">Location</label><input name="location" class="form-control" value="${escapeHtml(about.location || '')}" /></div>
-      <div><label class="form-label">Portrait Image</label><input name="portrait" class="form-control" value="${escapeHtml(about.portrait || '')}" /></div>
-      <div><label class="form-label">Secondary Image</label><input name="secondaryImage" class="form-control" value="${escapeHtml(about.secondaryImage || '')}" /></div>
-      <div><label class="form-label">Secondary Image Alt</label><input name="secondaryImageAlt" class="form-control" value="${escapeHtml(about.secondaryImageAlt || '')}" /></div>
-      <div class="full"><label class="form-label">Bio</label><textarea name="bio" class="form-control" rows="7">${escapeHtml(arrayToParagraphs(about.bio || []))}</textarea><div class="admin-helper mt-1">Separate paragraphs with a blank line.</div></div>
-      <div><label class="form-label">Current Work Eyebrow</label><input name="currentWorkEyebrow" class="form-control" value="${escapeHtml(about.currentWork?.eyebrow || '')}" /></div>
-      <div><label class="form-label">Current Work Heading</label><input name="currentWorkHeading" class="form-control" value="${escapeHtml(about.currentWork?.heading || '')}" /></div>
-      <div class="full"><label class="form-label">Current Work Description</label><textarea name="currentWorkDescription" class="form-control" rows="4">${escapeHtml(about.currentWork?.description || '')}</textarea></div>
-      <div><label class="form-label">Editing Experience</label><textarea name="editingExperience" class="form-control" rows="6">${escapeHtml(arrayToLines(about.editingExperience || []))}</textarea><div class="admin-helper mt-1">One item per line.</div></div>
-      <div><label class="form-label">Education</label><textarea name="education" class="form-control" rows="6">${escapeHtml(arrayToLines(about.education || []))}</textarea><div class="admin-helper mt-1">One item per line.</div></div>
-      <div class="full">
-        <label class="form-label">Speaking Topics</label>
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="admin-helper">Manage reusable speaking topic blocks.</span>
-          <button class="btn-outline btn-sm" type="button" data-add-repeat>Add Topic</button>
+    <div class="admin-form-stack">
+      <section class="admin-form-section">
+        <div class="admin-section-heading">
+          <h4>Intro</h4>
+          <p>Short opening details for About page.</p>
         </div>
-        <div id="about-topics-list" class="admin-repeat-list">${repeatListMarkup(about.speakingTopics || [], 'topic')}</div>
-      </div>
-      <div><label class="form-label">CTA Heading</label><input name="ctaHeading" class="form-control" value="${escapeHtml(about.cta?.heading || '')}" /></div>
-      <div><label class="form-label">CTA Link Text</label><input name="ctaLinkText" class="form-control" value="${escapeHtml(about.cta?.linkText || '')}" /></div>
-      <div><label class="form-label">CTA Link Href</label><input name="ctaLinkHref" class="form-control" value="${escapeHtml(about.cta?.linkHref || '')}" /></div>
-      <div class="full"><label class="form-label">CTA Description</label><textarea name="ctaDescription" class="form-control" rows="3">${escapeHtml(about.cta?.description || '')}</textarea></div>
+        <div class="admin-form-grid">
+          <div><label class="form-label">Page headline</label><input name="headline" class="form-control" value="${escapeHtml(about.headline || '')}" /></div>
+          <div><label class="form-label">Short tagline</label><input name="tagline" class="form-control" value="${escapeHtml(about.tagline || '')}" /></div>
+          <div><label class="form-label">Location</label><input name="location" class="form-control" value="${escapeHtml(about.location || '')}" /></div>
+        </div>
+      </section>
+
+      <section class="admin-form-section">
+        <div class="admin-section-heading">
+          <h4>Photos</h4>
+          <p>Update portrait and supporting image used on About page.</p>
+        </div>
+        <div class="admin-form-grid">
+          <div><label class="form-label">Portrait image path</label><input name="portrait" class="form-control" value="${escapeHtml(about.portrait || '')}" /></div>
+          <div><label class="form-label">Secondary image path</label><input name="secondaryImage" class="form-control" value="${escapeHtml(about.secondaryImage || '')}" /></div>
+          <div class="full"><label class="form-label">Secondary image description</label><input name="secondaryImageAlt" class="form-control" value="${escapeHtml(about.secondaryImageAlt || '')}" /></div>
+        </div>
+        <div class="admin-helper">Use site image path like <code>/assets/img/chill.webp</code>.</div>
+      </section>
+
+      <section class="admin-form-section">
+        <div class="admin-section-heading">
+          <h4>Bio</h4>
+          <p>Main biography text shown to readers.</p>
+        </div>
+        <div class="admin-form-grid">
+          <div class="full"><label class="form-label">Biography</label><textarea name="bio" class="form-control" rows="7">${escapeHtml(arrayToParagraphs(about.bio || []))}</textarea><div class="admin-helper mt-1">Separate paragraphs with a blank line.</div></div>
+        </div>
+      </section>
+
+      <section class="admin-form-section">
+        <div class="admin-section-heading">
+          <h4>Current Work</h4>
+          <p>Describe what Ashley is working on now.</p>
+        </div>
+        <div class="admin-form-grid">
+          <div><label class="form-label">Small label above section</label><input name="currentWorkEyebrow" class="form-control" value="${escapeHtml(about.currentWork?.eyebrow || '')}" /></div>
+          <div><label class="form-label">Section title</label><input name="currentWorkHeading" class="form-control" value="${escapeHtml(about.currentWork?.heading || '')}" /></div>
+          <div class="full"><label class="form-label">Description</label><textarea name="currentWorkDescription" class="form-control" rows="4">${escapeHtml(about.currentWork?.description || '')}</textarea></div>
+        </div>
+      </section>
+
+      <section class="admin-form-section">
+        <div class="admin-section-heading">
+          <h4>Speaking Topics</h4>
+          <p>Reusable topic blocks for About page speaking section.</p>
+        </div>
+        <div class="admin-repeat-field">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="admin-helper">Add, remove, or rewrite speaking topics.</span>
+            <button class="btn-outline btn-sm" type="button" data-add-repeat>Add Topic</button>
+          </div>
+          <div id="about-topics-list" class="admin-repeat-list">${repeatListMarkup(about.speakingTopics || [], 'topic')}</div>
+        </div>
+      </section>
+
+      <section class="admin-form-section">
+        <div class="admin-section-heading">
+          <h4>Contact Callout</h4>
+          <p>Small invitation at bottom of About page.</p>
+        </div>
+        <div class="admin-form-grid">
+          <div><label class="form-label">Callout title</label><input name="ctaHeading" class="form-control" value="${escapeHtml(about.cta?.heading || '')}" /></div>
+          <div><label class="form-label">Button text</label><input name="ctaLinkText" class="form-control" value="${escapeHtml(about.cta?.linkText || '')}" /></div>
+          <div><label class="form-label">Button link</label><input name="ctaLinkHref" class="form-control" value="${escapeHtml(about.cta?.linkHref || '')}" /></div>
+          <div class="full"><label class="form-label">Callout description</label><textarea name="ctaDescription" class="form-control" rows="3">${escapeHtml(about.cta?.description || '')}</textarea></div>
+        </div>
+      </section>
+
+      <details class="admin-disclosure">
+        <summary>More About page details</summary>
+        <div class="admin-disclosure-body">
+          <section class="admin-form-section">
+            <div class="admin-section-heading">
+              <h4>Professional Background</h4>
+              <p>Optional detail lists shown on About page.</p>
+            </div>
+            <div class="admin-form-grid">
+              <div><label class="form-label">Editing experience</label><textarea name="editingExperience" class="form-control" rows="6">${escapeHtml(arrayToLines(about.editingExperience || []))}</textarea><div class="admin-helper mt-1">One item per line.</div></div>
+              <div><label class="form-label">Education</label><textarea name="education" class="form-control" rows="6">${escapeHtml(arrayToLines(about.education || []))}</textarea><div class="admin-helper mt-1">One item per line.</div></div>
+            </div>
+          </section>
+        </div>
+      </details>
+
       <div class="full d-flex justify-content-end">
-        <button class="ac-btn" type="submit">Save About Content</button>
+        <button class="ac-btn" type="submit">Save About Page</button>
       </div>
     </div>`;
 
   legalForm.innerHTML = `
-    <div class="admin-form-grid">
-      <div class="full"><h3 class="h5 mb-0">Privacy Policy</h3></div>
-      <div><label class="form-label">Title</label><input name="privacyTitle" class="form-control" value="${escapeHtml(legal.privacy.title || '')}" /></div>
-      <div><label class="form-label">Updated Label</label><input name="privacyUpdatedLabel" class="form-control" value="${escapeHtml(legal.privacy.updatedLabel || '')}" /></div>
-      <div class="full"><label class="form-label">Intro</label><textarea name="privacyIntro" class="form-control" rows="3">${escapeHtml(legal.privacy.intro || '')}</textarea></div>
-      <div class="full"><label class="form-label">Body</label><textarea name="privacyBody" class="form-control" rows="10">${escapeHtml(legal.privacy.body || '')}</textarea><div class="admin-helper mt-1">Use blank lines for paragraphs. Use lines starting with <code>## </code> for section headings.</div></div>
-      <div class="full"><hr /></div>
-      <div class="full"><h3 class="h5 mb-0">Terms of Use</h3></div>
-      <div><label class="form-label">Title</label><input name="termsTitle" class="form-control" value="${escapeHtml(legal.terms.title || '')}" /></div>
-      <div><label class="form-label">Updated Label</label><input name="termsUpdatedLabel" class="form-control" value="${escapeHtml(legal.terms.updatedLabel || '')}" /></div>
-      <div class="full"><label class="form-label">Intro</label><textarea name="termsIntro" class="form-control" rows="3">${escapeHtml(legal.terms.intro || '')}</textarea></div>
-      <div class="full"><label class="form-label">Body</label><textarea name="termsBody" class="form-control" rows="10">${escapeHtml(legal.terms.body || '')}</textarea></div>
+    <div class="admin-form-stack">
+      <section class="admin-form-section">
+        <div class="admin-section-heading">
+          <h4>Privacy Policy</h4>
+          <p>Wording shown on privacy page.</p>
+        </div>
+        <div class="admin-form-grid">
+          <div><label class="form-label">Page title</label><input name="privacyTitle" class="form-control" value="${escapeHtml(legal.privacy.title || '')}" /></div>
+          <div><label class="form-label">Updated date label</label><input name="privacyUpdatedLabel" class="form-control" value="${escapeHtml(legal.privacy.updatedLabel || '')}" /></div>
+          <div class="full"><label class="form-label">Intro text</label><textarea name="privacyIntro" class="form-control" rows="3">${escapeHtml(legal.privacy.intro || '')}</textarea></div>
+          <div class="full"><label class="form-label">Page body</label><textarea name="privacyBody" class="form-control" rows="10">${escapeHtml(legal.privacy.body || '')}</textarea><div class="admin-helper mt-1">Use blank lines for paragraphs. Use lines starting with <code>## </code> for section headings.</div></div>
+        </div>
+      </section>
+
+      <section class="admin-form-section">
+        <div class="admin-section-heading">
+          <h4>Terms of Use</h4>
+          <p>Wording shown on terms page.</p>
+        </div>
+        <div class="admin-form-grid">
+          <div><label class="form-label">Page title</label><input name="termsTitle" class="form-control" value="${escapeHtml(legal.terms.title || '')}" /></div>
+          <div><label class="form-label">Updated date label</label><input name="termsUpdatedLabel" class="form-control" value="${escapeHtml(legal.terms.updatedLabel || '')}" /></div>
+          <div class="full"><label class="form-label">Intro text</label><textarea name="termsIntro" class="form-control" rows="3">${escapeHtml(legal.terms.intro || '')}</textarea></div>
+          <div class="full"><label class="form-label">Page body</label><textarea name="termsBody" class="form-control" rows="10">${escapeHtml(legal.terms.body || '')}</textarea></div>
+        </div>
+      </section>
+
       <div class="full d-flex justify-content-end">
         <button class="ac-btn" type="submit">Save Legal Pages</button>
       </div>
     </div>`;
 
   authForm.innerHTML = `
-    <div class="admin-form-grid">
-      <div class="full">
-        <label class="form-label">Admin Email</label>
-        <input name="email" class="form-control" type="email" value="${escapeHtml(authSettings?.email || '')}" required />
-      </div>
-      <div>
-        <label class="form-label">Current Password</label>
-        <input name="currentPassword" class="form-control" type="password" autocomplete="current-password" required />
-      </div>
-      <div>
-        <label class="form-label">New Password</label>
-        <input name="newPassword" class="form-control" type="password" autocomplete="new-password" />
-        <div class="admin-helper mt-1">Leave blank to keep current password.</div>
-      </div>
-      <div class="full">
-        <label class="form-label">Confirm New Password</label>
-        <input name="confirmPassword" class="form-control" type="password" autocomplete="new-password" />
-      </div>
+    <div class="admin-form-stack">
+      <section class="admin-form-section">
+        <div class="admin-section-heading">
+          <h4>Sign-In Details</h4>
+          <p>Change email or password used to sign in here.</p>
+        </div>
+        <div class="admin-form-grid">
+          <div class="full">
+            <label class="form-label">Admin email</label>
+            <input name="email" class="form-control" type="email" value="${escapeHtml(authSettings?.email || '')}" required />
+          </div>
+        </div>
+      </section>
+
+      <section class="admin-form-section">
+        <div class="admin-section-heading">
+          <h4>Password</h4>
+          <p>Use current password to confirm changes. Leave new password blank if email only is changing.</p>
+        </div>
+        <div class="admin-form-grid">
+          <div>
+            <label class="form-label">Current password</label>
+            <input name="currentPassword" class="form-control" type="password" autocomplete="current-password" required />
+          </div>
+          <div>
+            <label class="form-label">New password</label>
+            <input name="newPassword" class="form-control" type="password" autocomplete="new-password" />
+            <div class="admin-helper mt-1">Leave blank to keep current password.</div>
+          </div>
+          <div class="full">
+            <label class="form-label">Confirm new password</label>
+            <input name="confirmPassword" class="form-control" type="password" autocomplete="new-password" />
+          </div>
+        </div>
+      </section>
+
       <div class="full d-flex justify-content-end">
-        <button class="ac-btn" type="submit">Save Access Settings</button>
+        <button class="ac-btn" type="submit">Save Sign-In Settings</button>
       </div>
     </div>`;
 
@@ -637,19 +853,36 @@ function openEditModal(kind, item = null) {
   if (kind === 'link') {
     title.textContent = item ? 'Edit Link' : 'Add Link';
     form.innerHTML = `
-      <div class="admin-form-grid">
-        <div><label class="form-label">Group</label><select name="groupName" class="form-select">
-          ${['hero_cta', 'professional', 'social']
-            .map((value) => `<option value="${value}" ${item?.groupName === value ? 'selected' : ''}>${value}</option>`)
-            .join('')}
-        </select></div>
-        <div><label class="form-label">Slot Key</label><input name="slotKey" class="form-control" value="${escapeHtml(item?.slotKey || '')}" /></div>
-        <div><label class="form-label">Label</label><input name="label" class="form-control" value="${escapeHtml(item?.label || '')}" required /></div>
-        <div><label class="form-label">Href</label><input name="href" class="form-control" value="${escapeHtml(item?.href || '')}" required /></div>
-        <div><label class="form-label">Icon</label><input name="icon" class="form-control" value="${escapeHtml(item?.icon || '')}" /></div>
-        <div><label class="form-label">Style</label><input name="style" class="form-control" value="${escapeHtml(item?.style || '')}" /></div>
-        <div><label class="form-label">Sort Order</label><input name="sortOrder" class="form-control" type="number" min="0" max="999" value="${escapeHtml(item?.sortOrder ?? 0)}" /></div>
-        <div><label class="form-label">Visible</label><select name="visible" class="form-select"><option value="true" ${item?.visible !== false ? 'selected' : ''}>Yes</option><option value="false" ${item?.visible === false ? 'selected' : ''}>No</option></select></div>
+      <div class="admin-form-stack">
+        <section class="admin-form-section">
+          <div class="admin-section-heading">
+            <h4>Basic Details</h4>
+            <p>Set where link appears, what button says, and where it goes.</p>
+          </div>
+          <div class="admin-form-grid">
+            <div><label class="form-label">Where this appears</label><select name="groupName" class="form-select">
+              ${['hero_cta', 'professional', 'social']
+                .map((value) => `<option value="${value}" ${item?.groupName === value ? 'selected' : ''}>${getLinkGroupLabel(value)}</option>`)
+                .join('')}
+            </select></div>
+            <div><label class="form-label">Link text</label><input name="label" class="form-control" value="${escapeHtml(item?.label || '')}" required /></div>
+            <div class="full"><label class="form-label">Destination link</label><input name="href" class="form-control" value="${escapeHtml(item?.href || '')}" required /></div>
+            <div><label class="form-label">Show on site</label><select name="visible" class="form-select"><option value="true" ${item?.visible !== false ? 'selected' : ''}>Yes</option><option value="false" ${item?.visible === false ? 'selected' : ''}>No</option></select></div>
+          </div>
+        </section>
+
+        <details class="admin-disclosure">
+          <summary>More link options</summary>
+          <div class="admin-disclosure-body">
+            <div class="admin-form-grid">
+              <div><label class="form-label">Link key</label><input name="slotKey" class="form-control" value="${escapeHtml(item?.slotKey || '')}" /></div>
+              <div><label class="form-label">Icon name</label><input name="icon" class="form-control" value="${escapeHtml(item?.icon || '')}" /></div>
+              <div><label class="form-label">Style</label><input name="style" class="form-control" value="${escapeHtml(item?.style || '')}" /></div>
+              <div><label class="form-label">Display order</label><input name="sortOrder" class="form-control" type="number" min="0" max="999" value="${escapeHtml(item?.sortOrder ?? 0)}" /></div>
+            </div>
+          </div>
+        </details>
+
         <div class="full d-flex justify-content-end">
           <button class="ac-btn" type="submit">${item ? 'Save Link' : 'Create Link'}</button>
         </div>
@@ -657,24 +890,52 @@ function openEditModal(kind, item = null) {
   }
 
   if (kind === 'speaking') {
-    title.textContent = item ? 'Edit Speaking Item' : 'Add Speaking Item';
+    title.textContent = item ? 'Edit Event' : 'Add Event';
     form.innerHTML = `
-      <div class="admin-form-grid">
-        <div><label class="form-label">Type</label><select name="type" class="form-select">
-          ${['upcoming_conference', 'speaking_engagement', 'past_appearance']
-            .map((value) => `<option value="${value}" ${item?.type === value ? 'selected' : ''}>${value}</option>`)
-            .join('')}
-        </select></div>
-        <div><label class="form-label">Date</label><input name="date" class="form-control" type="date" value="${escapeHtml(item?.date || '')}" required /></div>
-        <div><label class="form-label">Display Date</label><input name="displayDate" class="form-control" value="${escapeHtml(item?.displayDate || '')}" /></div>
-        <div><label class="form-label">City</label><input name="city" class="form-control" value="${escapeHtml(item?.city || '')}" /></div>
-        <div><label class="form-label">Venue</label><input name="venue" class="form-control" value="${escapeHtml(item?.venue || '')}" /></div>
-        <div><label class="form-label">Venue Address</label><input name="venueAddress" class="form-control" value="${escapeHtml(item?.venueAddress || '')}" /></div>
-        <div class="full"><label class="form-label">Venue Map URL</label><input name="venueMapUrl" class="form-control" value="${escapeHtml(item?.venueMapUrl || '')}" /></div>
-        <div class="full"><label class="form-label">Talk Title</label><input name="talkTitle" class="form-control" value="${escapeHtml(item?.talkTitle || '')}" required /></div>
-        <div class="full"><label class="form-label">Topic</label><textarea name="topic" class="form-control" rows="4">${escapeHtml(item?.topic || '')}</textarea></div>
+      <div class="admin-form-stack">
+        <section class="admin-form-section">
+          <div class="admin-section-heading">
+            <h4>Basic Details</h4>
+            <p>Main details visitors need to see.</p>
+          </div>
+          <div class="admin-form-grid">
+            <div><label class="form-label">Type</label><select name="type" class="form-select">
+              ${['upcoming_conference', 'speaking_engagement', 'past_appearance']
+                .map((value) => `<option value="${value}" ${item?.type === value ? 'selected' : ''}>${getSpeakingTypeLabel(value)}</option>`)
+                .join('')}
+            </select></div>
+            <div><label class="form-label">Actual date</label><input name="date" class="form-control" type="date" value="${escapeHtml(item?.date || '')}" required /></div>
+            <div><label class="form-label">Date shown on site</label><input name="displayDate" class="form-control" value="${escapeHtml(item?.displayDate || '')}" /></div>
+            <div class="full"><label class="form-label">Event title</label><input name="talkTitle" class="form-control" value="${escapeHtml(item?.talkTitle || '')}" required /></div>
+            <div class="full admin-helper">Use actual date for sorting. "Date shown on site" lets you write something friendlier like "Spring 2026".</div>
+          </div>
+        </section>
+
+        <section class="admin-form-section">
+          <div class="admin-section-heading">
+            <h4>Location</h4>
+            <p>Where event happens.</p>
+          </div>
+          <div class="admin-form-grid">
+            <div><label class="form-label">City</label><input name="city" class="form-control" value="${escapeHtml(item?.city || '')}" /></div>
+            <div><label class="form-label">Venue</label><input name="venue" class="form-control" value="${escapeHtml(item?.venue || '')}" /></div>
+            <div class="full"><label class="form-label">Venue address</label><input name="venueAddress" class="form-control" value="${escapeHtml(item?.venueAddress || '')}" /></div>
+          </div>
+        </section>
+
+        <section class="admin-form-section">
+          <div class="admin-section-heading">
+            <h4>Optional Details</h4>
+            <p>Add supporting context if it helps visitors.</p>
+          </div>
+          <div class="admin-form-grid">
+            <div class="full"><label class="form-label">Map link</label><input name="venueMapUrl" class="form-control" value="${escapeHtml(item?.venueMapUrl || '')}" /></div>
+            <div class="full"><label class="form-label">Short description</label><textarea name="topic" class="form-control" rows="4">${escapeHtml(item?.topic || '')}</textarea></div>
+          </div>
+        </section>
+
         <div class="full d-flex justify-content-end">
-          <button class="ac-btn" type="submit">${item ? 'Save Speaking Item' : 'Create Speaking Item'}</button>
+          <button class="ac-btn" type="submit">${item ? 'Save Event' : 'Create Event'}</button>
         </div>
       </div>`;
   }
@@ -685,10 +946,18 @@ function openEditModal(kind, item = null) {
 function bindGlobalEvents() {
   document.querySelectorAll('.admin-nav-link').forEach((button) => {
     button.addEventListener('click', () => {
-      document.querySelectorAll('.admin-nav-link').forEach((entry) => entry.classList.remove('is-active'));
-      document.querySelectorAll('.admin-panel').forEach((panel) => panel.classList.remove('is-active'));
-      button.classList.add('is-active');
-      document.querySelector(`[data-panel="${button.dataset.target}"]`)?.classList.add('is-active');
+      setActivePanel(button.dataset.target);
+    });
+  });
+
+  document.querySelectorAll('.admin-shortcut').forEach((button) => {
+    button.addEventListener('click', () => {
+      const target = button.dataset.target || DEFAULT_PANEL;
+      setActivePanel(target);
+      const scrollTarget = button.dataset.scrollTarget;
+      if (scrollTarget) {
+        document.getElementById(scrollTarget)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     });
   });
 
@@ -709,12 +978,13 @@ function bindGlobalEvents() {
       openEditModal('link', state.links.find((item) => item.id === id));
     }
     if (target.dataset.action === 'delete-link') {
+      const item = state.links.find((entry) => entry.id === id);
       state.deleteAction = async () => {
         await api(`/api/admin/links/${id}`, { method: 'DELETE' });
-        showBanner('success', 'Link deleted.');
+        showBanner('success', 'Link removed from website.');
         await reloadAll();
       };
-      document.getElementById('admin-delete-message').textContent = 'Delete this link? This cannot be undone.';
+      document.getElementById('admin-delete-message').textContent = `Delete "${item?.label || 'this link'}"? This removes it from website.`;
       deleteModal.show();
     }
   });
@@ -728,12 +998,13 @@ function bindGlobalEvents() {
       openEditModal('speaking', state.speaking.find((item) => item.id === id));
     }
     if (target.dataset.action === 'delete-speaking') {
+      const item = state.speaking.find((entry) => entry.id === id);
       state.deleteAction = async () => {
         await api(`/api/admin/speaking/${id}`, { method: 'DELETE' });
-        showBanner('success', 'Speaking item deleted.');
+        showBanner('success', 'Event removed from website.');
         await reloadAll();
       };
-      document.getElementById('admin-delete-message').textContent = 'Delete this speaking item? This cannot be undone.';
+      document.getElementById('admin-delete-message').textContent = `Delete "${item?.talkTitle || 'this event'}"? This removes it from website.`;
       deleteModal.show();
     }
   });
@@ -783,7 +1054,7 @@ function bindGlobalEvents() {
       body: JSON.stringify(payload)
     });
 
-    showBanner('success', `${isLink ? 'Link' : 'Speaking item'} saved.`);
+    showBanner('success', `${isLink ? 'Link' : 'Event'} saved.`);
     editModal.hide();
     await reloadAll();
   });
@@ -795,7 +1066,7 @@ function bindGlobalEvents() {
       method: 'PATCH',
       body: JSON.stringify(payload)
     });
-    showBanner('success', 'Site content saved.');
+    showBanner('success', 'Home page saved.');
     await reloadAll();
   });
 
@@ -806,7 +1077,7 @@ function bindGlobalEvents() {
       method: 'PATCH',
       body: JSON.stringify(payload)
     });
-    showBanner('success', 'About content saved.');
+    showBanner('success', 'About page saved.');
     await reloadAll();
   });
 
@@ -831,7 +1102,7 @@ function bindGlobalEvents() {
     state.session = { ...(state.session || {}), authenticated: true, email: result.email };
     document.getElementById('admin-email').textContent = result.email;
     event.currentTarget.reset();
-    showBanner('success', 'Admin access updated.');
+    showBanner('success', 'Sign-in settings saved.');
     await reloadAll();
   });
 }
@@ -871,6 +1142,7 @@ async function bootstrap() {
   state.session = session;
   document.getElementById('admin-email').textContent = session.email;
   bindGlobalEvents();
+  setActivePanel(DEFAULT_PANEL);
   await reloadAll();
 }
 

@@ -35,77 +35,111 @@
       <div class="row g-4">
         <div class="col-lg-3">
           <nav class="admin-nav card-item p-3 sticky-top" aria-label="Admin Sections">
-            <button class="admin-nav-link is-active" data-target="overview" type="button">Overview</button>
-            <button class="admin-nav-link" data-target="links" type="button">Links</button>
-            <button class="admin-nav-link" data-target="speaking" type="button">Speaking</button>
-            <button class="admin-nav-link" data-target="site" type="button">Site Blocks</button>
-            <button class="admin-nav-link" data-target="access" type="button">Access</button>
-            <button class="admin-nav-link" data-target="legal" type="button">Legal</button>
+            <button class="admin-nav-link is-active" data-target="site" type="button">Edit Website</button>
+            <button class="admin-nav-link" data-target="speaking" type="button">Speaking & Appearances</button>
+            <button class="admin-nav-link" data-target="links" type="button">Buttons & Links</button>
+            <button class="admin-nav-link" data-target="overview" type="button">Site Activity</button>
+            <button class="admin-nav-link" data-target="settings" type="button">Settings</button>
           </nav>
         </div>
 
         <div class="col-lg-9">
-          <section class="admin-panel is-active" data-panel="overview">
+          <section class="admin-panel is-active" data-panel="site">
             <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
               <div>
-                <h2 class="section-title mb-1">Overview</h2>
-                <p class="text-muted-ui mb-0">High-level content and traffic signals.</p>
+                <h2 class="section-title mb-1">Edit Website</h2>
+                <p class="text-muted-ui mb-0">Update main pages first. Most content changes start here.</p>
               </div>
               <a class="btn-outline btn-sm" href="/" target="_blank" rel="noopener noreferrer">View Live Site</a>
             </div>
-            <div id="overview-content" class="admin-loading">Loading dashboard...</div>
+
+            <section class="card-item p-4 admin-shortcuts-card mb-4">
+              <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-end">
+                <div>
+                  <p class="section-label mb-2">Most Common Tasks</p>
+                  <h3 class="h4 mb-1">Start With What You Want to Change</h3>
+                  <p class="text-muted-ui mb-0">Choose a common update below, then edit only fields you need.</p>
+                </div>
+                <p id="site-last-updated" class="admin-status-note mb-0">Loading last update...</p>
+              </div>
+              <div class="admin-shortcuts mt-4" aria-label="Common admin tasks">
+                <button class="admin-shortcut" type="button" data-target="site" data-scroll-target="home-page-card">
+                  <strong>Change homepage intro</strong>
+                  <span>Headline, intro text, image, and highlights.</span>
+                </button>
+                <button class="admin-shortcut" type="button" data-target="site" data-scroll-target="about-page-card">
+                  <strong>Update About page</strong>
+                  <span>Bio, photos, current work, and callout.</span>
+                </button>
+                <button class="admin-shortcut" type="button" data-target="speaking">
+                  <strong>Add speaking event</strong>
+                  <span>Add or edit event details shown on site.</span>
+                </button>
+                <button class="admin-shortcut" type="button" data-target="links">
+                  <strong>Edit buttons & links</strong>
+                  <span>Homepage buttons, about links, and social links.</span>
+                </button>
+              </div>
+            </section>
+
+            <div class="d-flex flex-column gap-4">
+              <div id="home-page-card" class="card-item p-4">
+                <h3 class="section-title mb-2">Home Page</h3>
+                <p class="text-muted-ui mb-4">These fields control first page visitors see, including intro text and featured shortcuts.</p>
+                <form id="site-form" class="d-grid gap-3"></form>
+              </div>
+              <div id="about-page-card" class="card-item p-4">
+                <h3 class="section-title mb-2">About Page</h3>
+                <p class="text-muted-ui mb-4">Use this area for biography, photos, current work, speaking topics, and contact callout.</p>
+                <form id="about-form" class="d-grid gap-3"></form>
+              </div>
+            </div>
+          </section>
+
+          <section class="admin-panel" data-panel="speaking">
+            <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+              <div>
+                <h2 class="section-title mb-1">Speaking & Appearances</h2>
+                <p class="text-muted-ui mb-0">Add or update talks, conferences, and past appearances shown on site.</p>
+              </div>
+              <button id="add-speaking-button" class="ac-btn btn-sm" type="button">Add Event</button>
+            </div>
+            <div id="speaking-content" class="admin-loading">Loading events...</div>
           </section>
 
           <section class="admin-panel" data-panel="links">
             <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
               <div>
-                <h2 class="section-title mb-1">Links</h2>
-                <p class="text-muted-ui mb-0">Manage hero buttons, social links, and professional links.</p>
+                <h2 class="section-title mb-1">Buttons & Links</h2>
+                <p class="text-muted-ui mb-0">Manage homepage buttons, About page links, and social links in one place.</p>
               </div>
               <button id="add-link-button" class="ac-btn btn-sm" type="button">Add Link</button>
             </div>
             <div id="links-content" class="admin-loading">Loading links...</div>
           </section>
 
-          <section class="admin-panel" data-panel="speaking">
+          <section class="admin-panel" data-panel="overview">
             <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
               <div>
-                <h2 class="section-title mb-1">Speaking</h2>
-                <p class="text-muted-ui mb-0">Create, update, and remove speaking entries that drive the public page.</p>
+                <h2 class="section-title mb-1">Site Activity</h2>
+                <p class="text-muted-ui mb-0">See recent updates and light traffic signals without getting in your way.</p>
               </div>
-              <button id="add-speaking-button" class="ac-btn btn-sm" type="button">Add Speaking Item</button>
             </div>
-            <div id="speaking-content" class="admin-loading">Loading speaking entries...</div>
+            <div id="overview-content" class="admin-loading">Loading site activity...</div>
           </section>
 
-          <section class="admin-panel" data-panel="site">
+          <section class="admin-panel" data-panel="settings">
             <div class="d-flex flex-column gap-4">
               <div class="card-item p-4">
-                <h2 class="section-title mb-2">Site & Home</h2>
-                <p class="text-muted-ui mb-4">Edit core homepage content and shared site metadata.</p>
-                <form id="site-form" class="d-grid gap-3"></form>
+                <h2 class="section-title mb-2">Sign-In & Security</h2>
+                <p class="text-muted-ui mb-4">Change admin email or password used to sign in to this dashboard.</p>
+                <form id="auth-form" class="d-grid gap-3"></form>
               </div>
               <div class="card-item p-4">
-                <h2 class="section-title mb-2">About Page</h2>
-                <p class="text-muted-ui mb-4">Edit bio, current work, and about-page content blocks.</p>
-                <form id="about-form" class="d-grid gap-3"></form>
+                <h2 class="section-title mb-2">Privacy & Terms</h2>
+                <p class="text-muted-ui mb-4">Update legal page wording shown on website.</p>
+                <form id="legal-form" class="d-grid gap-3"></form>
               </div>
-            </div>
-          </section>
-
-          <section class="admin-panel" data-panel="legal">
-            <div class="card-item p-4">
-              <h2 class="section-title mb-2">Legal Pages</h2>
-              <p class="text-muted-ui mb-4">Maintain privacy and terms copy for information collection and site usage.</p>
-              <form id="legal-form" class="d-grid gap-3"></form>
-            </div>
-          </section>
-
-          <section class="admin-panel" data-panel="access">
-            <div class="card-item p-4">
-              <h2 class="section-title mb-2">Admin Access</h2>
-              <p class="text-muted-ui mb-4">Change admin email and password used to access this dashboard.</p>
-              <form id="auth-form" class="d-grid gap-3"></form>
             </div>
           </section>
         </div>
