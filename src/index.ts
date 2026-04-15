@@ -17,7 +17,14 @@ type AppEnv = {
 const app = new Hono<AppEnv>();
 
 function isAdminPage(pathname: string) {
-  return pathname === '/admin' || pathname === '/admin/' || pathname === '/admin/login' || pathname === '/admin/login/';
+  return (
+    pathname === '/admin' ||
+    pathname === '/admin/' ||
+    pathname === '/admin/login' ||
+    pathname === '/admin/login/' ||
+    pathname === '/admin/editor' ||
+    pathname === '/admin/editor/'
+  );
 }
 
 function shouldTrackPageview(request: Request, response: Response) {
@@ -37,7 +44,7 @@ app.use('*', async (c, next) => {
 
     if (token && !session) clearAdminCookie(c);
 
-    if ((pathname === '/admin' || pathname === '/admin/') && !session) {
+    if ((pathname === '/admin' || pathname === '/admin/' || pathname === '/admin/editor' || pathname === '/admin/editor/') && !session) {
       return c.redirect('/admin/login/', 302);
     }
 
