@@ -1,6 +1,7 @@
 import { asc, eq } from 'drizzle-orm';
 import { contentDocuments, links, speakingItems } from '../db/schema';
 import { getDb, nowIso, type AppBindings } from '../db';
+import { getNavPages } from '../db/pages';
 import {
   aboutDocumentSchema,
   eventsMetaSchema,
@@ -86,8 +87,13 @@ export async function getManagedSite(env: AppBindings, requestUrl: string) {
     getLinksByGroup(env, linkGroupSchema.enum.social)
   ]);
 
+  const navPages = await getNavPages(env);
+  const pageNavItems = navPages.map((p) => ({ label: p.title, href: p.slug }));
+  const mergedNav = [...(base.navigation || []), ...pageNavItems];
+
   return {
     ...base,
+    navigation: mergedNav,
     home: {
       ...base.home,
       heroCTAs: heroLinks.length ? heroLinksToPublic(heroLinks) : base.home.heroCTAs

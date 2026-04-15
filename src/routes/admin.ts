@@ -14,10 +14,13 @@ import {
   authSettingsInputSchema,
   legalDocumentSchema,
   linkInputSchema,
+  pageInputSchema,
   productsDocumentSchema,
   siteDocumentSchema,
-  speakingInputSchema
+  speakingInputSchema,
+  validateBlocks
 } from '../lib/validation';
+import { createPage, deletePage, getPageById, listPages, updatePage } from '../lib/db/pages';
 
 type AdminEnv = {
   Bindings: AppBindings;
@@ -443,6 +446,95 @@ adminApi.patch('/blocks/:key', async (c) => {
     action: 'update',
     summary: `Updated ${key} content.`,
     changedFields: payload && typeof payload === 'object' ? Object.keys(payload as Record<string, unknown>) : null
+  });
+
+  return c.json({ success: true });
+});
+
+// ── Pages CRUD ──
+
+adminApi.get('/pages', async (c) => {
+  const rows = await listPages(c.env);
+  return c.json({ items: rows.map((r) => ({ ...r, blocks: JSON.parse(r.blocks) })) });
+});
+
+adminApi.post('/pages', async (c) => {
+  const parsed = pageInputSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const blockErrors = validateBlocks(parsed.data.blocks);
+  if (blockErrors.length) return c.json({ error: blockErrors.join('; ') }, 400);
+
+  const id = await createPage(c.env, {
+    slug: parsed.data.slug,
+    title: parsed.data.title,
+    description: parsed.data.description,
+    blocks: JSON.stringify(parsed.data.blocks),
+    published: parsed.data.published,
+    showInNav: parsed.data.showInNav,
+    navOrder: parsed.data.navOrder
+  });
+
+  await recordAudit(c.env, {
+    actorEmail: c.get('adminEmail'),
+    entityType: 'page',
+    entityId: id,
+    action: 'create',
+    summary: `Created page "${parsed.data.title}".`
+  });
+
+  return c.json({ success: true, id });
+});
+
+adminApi.get('/pages/:id', async (c) => {
+  const page = await getPageById(c.env, c.req.param('id'));
+  if (!page) return c.json({ error: 'Page not found.' }, 404);
+  return c.json({ ...page, blocks: JSON.parse(page.blocks) });
+});
+
+adminApi.patch('/pages/:id', async (c) => {
+  const existing = await getPageById(c.env, c.req.param('id'));
+  if (!existing) return c.json({ error: 'Page not found.' }, 404);
+
+  const parsed = pageInputSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const blockErrors = validateBlocks(parsed.data.blocks);
+  if (blockErrors.length) return c.json({ error: blockErrors.join('; ') }, 400);
+
+  await updatePage(c.env, c.req.param('id'), {
+    slug: parsed.data.slug,
+    title: parsed.data.title,
+    description: parsed.data.description,
+    blocks: JSON.stringify(parsed.data.blocks),
+    published: parsed.data.published,
+    showInNav: parsed.data.showInNav,
+    navOrder: parsed.data.navOrder
+  });
+
+  await recordAudit(c.env, {
+    actorEmail: c.get('adminEmail'),
+    entityType: 'page',
+    entityId: c.req.param('id'),
+    action: 'update',
+    summary: `Updated page "${parsed.data.title}".`,
+    changedFields: Object.keys(parsed.data)
+  });
+
+  return c.json({ success: true });
+});
+
+adminApi.delete('/pages/:id', async (c) => {
+  const existing = await getPageById(c.env, c.req.param('id'));
+  if (!existing) return c.json({ error: 'Page not found.' }, 404);
+
+  await deletePage(c.env, c.req.param('id'));
+  await recordAudit(c.env, {
+    actorEmail: c.get('adminEmail'),
+    entityType: 'page',
+    entityId: c.req.param('id'),
+    action: 'delete',
+    summary: `Deleted page "${existing.title}".`
   });
 
   return c.json({ success: true });

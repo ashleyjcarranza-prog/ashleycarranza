@@ -555,6 +555,118 @@
   box-shadow: 0 0 0 3px var(--accent-light);
 }
 
+/* ── Palette divider ── */
+
+.editor-palette-divider {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--secondary);
+  padding: 0.75rem 0.9rem 0.25rem;
+  border-top: 1px solid var(--border);
+  margin-top: 0.5rem;
+}
+
+.editor-palette-add {
+  color: var(--accent) !important;
+  font-weight: 600;
+}
+
+.editor-palette-add i {
+  font-size: 1rem;
+}
+
+/* ── Block editor ── */
+
+.editor-block-item {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 0.4rem;
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.editor-block-item:hover {
+  background: var(--surface-muted, #F5F4EF);
+}
+
+.editor-block-item.is-active {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.editor-block-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.editor-block-item-head i {
+  margin-right: 0.3rem;
+  opacity: 0.6;
+}
+
+.editor-block-item-actions {
+  display: flex;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.editor-block-item:hover .editor-block-item-actions {
+  opacity: 1;
+}
+
+.editor-block-item-actions .btn-outline {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.78rem;
+  min-width: auto;
+}
+
+/* Block type picker */
+
+.editor-block-picker {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.editor-block-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 0.4rem;
+}
+
+.editor-block-picker-btn {
+  display: grid;
+  place-items: center;
+  gap: 0.2rem;
+  padding: 0.6rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--ink);
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.editor-block-picker-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.editor-block-picker-btn i {
+  font-size: 1.2rem;
+  color: var(--accent);
+}
+
 /* ── Responsive ── */
 
 @media (max-width: 860px) {

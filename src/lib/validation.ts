@@ -201,6 +201,111 @@ export const speakingInputSchema = z.object({
   topic: z.string().trim().max(300).optional().nullable()
 });
 
+// ── Block & Page schemas ──
+
+const blockTypes = ['hero', 'text', 'image', 'gallery', 'cards', 'cta', 'divider'] as const;
+export type BlockType = (typeof blockTypes)[number];
+
+const heroBlockData = z.object({
+  heading: z.string().trim().max(200).default(''),
+  subheading: z.string().trim().max(800).default(''),
+  image: z.union([assetPathSchema, z.literal('')]).default(''),
+  imageAlt: z.string().trim().max(180).default(''),
+  buttonText: z.string().trim().max(80).default(''),
+  buttonHref: z.union([hrefSchema, z.literal('')]).default('')
+});
+
+const textBlockData = z.object({
+  heading: z.string().trim().max(200).default(''),
+  body: z.string().trim().max(8000).default('')
+});
+
+const imageBlockData = z.object({
+  src: z.union([assetPathSchema, z.literal('')]).default(''),
+  alt: z.string().trim().max(180).default(''),
+  caption: z.string().trim().max(300).default(''),
+  href: z.union([hrefSchema, z.literal('')]).default('')
+});
+
+const galleryImageSchema = z.object({
+  src: z.union([assetPathSchema, z.literal('')]).default(''),
+  alt: z.string().trim().max(180).default(''),
+  caption: z.string().trim().max(300).default('')
+});
+
+const galleryBlockData = z.object({
+  images: z.array(galleryImageSchema).default([])
+});
+
+const cardItemSchema = z.object({
+  image: z.union([assetPathSchema, z.literal('')]).default(''),
+  title: z.string().trim().max(160).default(''),
+  description: z.string().trim().max(400).default(''),
+  href: z.union([hrefSchema, z.literal('')]).default('')
+});
+
+const cardsBlockData = z.object({
+  cards: z.array(cardItemSchema).default([])
+});
+
+const ctaBlockData = z.object({
+  heading: z.string().trim().max(200).default(''),
+  description: z.string().trim().max(600).default(''),
+  buttonText: z.string().trim().max(80).default(''),
+  buttonHref: z.union([hrefSchema, z.literal('')]).default('')
+});
+
+const dividerBlockData = z.object({
+  size: z.enum(['small', 'medium', 'large']).default('medium')
+});
+
+export const blockDataSchemas = {
+  hero: heroBlockData,
+  text: textBlockData,
+  image: imageBlockData,
+  gallery: galleryBlockData,
+  cards: cardsBlockData,
+  cta: ctaBlockData,
+  divider: dividerBlockData
+} as const;
+
+export const blockSchema = z.object({
+  id: z.string().trim().min(1).max(120),
+  type: z.enum(blockTypes),
+  data: z.record(z.string(), z.unknown())
+});
+
+export const pageInputSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .min(1)
+    .max(200)
+    .regex(/^\/[a-z0-9][a-z0-9\-/]*$/, 'Slug must start with / and contain only lowercase letters, numbers, and hyphens.'),
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(600).default(''),
+  blocks: z.array(blockSchema).default([]),
+  published: z.coerce.boolean().default(false),
+  showInNav: z.coerce.boolean().default(false),
+  navOrder: z.coerce.number().int().min(0).max(999).default(99)
+});
+
+export function validateBlocks(blocks: z.infer<typeof blockSchema>[]) {
+  const errors: string[] = [];
+  for (const block of blocks) {
+    const schema = blockDataSchemas[block.type as BlockType];
+    if (!schema) {
+      errors.push(`Unknown block type: ${block.type}`);
+      continue;
+    }
+    const result = schema.safeParse(block.data);
+    if (!result.success) {
+      errors.push(`Block "${block.id}" (${block.type}): ${result.error.issues.map((i) => i.message).join(', ')}`);
+    }
+  }
+  return errors;
+}
+
 export const authSettingsInputSchema = z.object({
   email: z.string().trim().email().max(160),
   currentPassword: z.string().min(1).max(256),

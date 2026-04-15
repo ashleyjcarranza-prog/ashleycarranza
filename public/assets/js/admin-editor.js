@@ -15,7 +15,12 @@ const editorState = {
     products: { items: {}, added: [], removed: {} }
   },
   dirty: { hero: false, quicknav: false, about: false, products: false },
-  activeSection: 'hero'
+  activeSection: 'hero',
+  pages: [],
+  activePage: null,
+  pageBlocks: [],
+  pageDirty: false,
+  activeBlockId: null
 };
 
 let mediaPickerContext = null;
@@ -781,6 +786,11 @@ async function uploadFile(file, path, sectionKey) {
 }
 
 function applyImageToField(path, url, sectionKey) {
+  if (path.startsWith('block.')) {
+    handleBlockImageApply(path, url);
+    return;
+  }
+
   if (path.startsWith('product.')) {
     const parts = path.split('.');
     const pid = parts[1];
@@ -862,15 +872,38 @@ function renderMediaTab(tab) {
 
 function renderPalette() {
   const palette = document.getElementById('editor-palette');
-  palette.innerHTML = SECTION_REGISTRY.map((s) => `
+  const sectionButtons = SECTION_REGISTRY.map((s) => `
     <button class="editor-palette-item" data-section-key="${s.key}">
       ${escapeHtml(s.label)}
       <small>${escapeHtml(s.description)}</small>
     </button>`).join('');
 
-  palette.querySelectorAll('.editor-palette-item').forEach((btn) => {
-    btn.addEventListener('click', () => loadSection(btn.dataset.sectionKey));
+  const pageButtons = editorState.pages.map((p) => `
+    <button class="editor-palette-item" data-page-id="${escapeHtml(p.id)}">
+      ${escapeHtml(p.title || 'Untitled')}
+      <small>${escapeHtml(p.slug)} ${p.published ? '' : '(draft)'}</small>
+    </button>`).join('');
+
+  palette.innerHTML = `
+    ${sectionButtons}
+    <div class="editor-palette-divider">Pages</div>
+    ${pageButtons}
+    <button class="editor-palette-item editor-palette-add" data-new-page>
+      <i class="bi bi-plus-circle"></i> New Page
+    </button>`;
+
+  palette.querySelectorAll('[data-section-key]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      editorState.activePage = null;
+      loadSection(btn.dataset.sectionKey);
+    });
   });
+
+  palette.querySelectorAll('[data-page-id]').forEach((btn) => {
+    btn.addEventListener('click', () => loadPage(btn.dataset.pageId));
+  });
+
+  palette.querySelector('[data-new-page]')?.addEventListener('click', () => loadNewPage());
 }
 
 function loadSection(key) {
@@ -966,6 +999,508 @@ async function saveSection(key) {
   }
 }
 
+// ── Block Type Definitions ──
+
+const BLOCK_TYPES = [
+  { type: 'hero', label: 'Hero', icon: 'bi-image', defaults: { heading: '', subheading: '', image: '', imageAlt: '', buttonText: '', buttonHref: '' } },
+  { type: 'text', label: 'Text', icon: 'bi-text-paragraph', defaults: { heading: '', body: '' } },
+  { type: 'image', label: 'Image', icon: 'bi-card-image', defaults: { src: '', alt: '', caption: '', href: '' } },
+  { type: 'gallery', label: 'Gallery', icon: 'bi-grid-3x3-gap', defaults: { images: [] } },
+  { type: 'cards', label: 'Cards', icon: 'bi-columns-gap', defaults: { cards: [] } },
+  { type: 'cta', label: 'Call to Action', icon: 'bi-megaphone', defaults: { heading: '', description: '', buttonText: '', buttonHref: '' } },
+  { type: 'divider', label: 'Divider', icon: 'bi-hr', defaults: { size: 'medium' } }
+];
+
+function renderBlockFields(block) {
+  const d = block.data || {};
+  const bid = block.id;
+  switch (block.type) {
+    case 'hero':
+      return `
+        <div class="editor-field"><label>Heading</label><input data-block-field="heading" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(d.heading || '')}" /></div>
+        <div class="editor-field"><label>Subheading</label><textarea data-block-field="subheading" data-block-id="${escapeHtml(bid)}" rows="3">${escapeHtml(d.subheading || '')}</textarea></div>
+        <div class="editor-field"><label>Background image</label>${renderDropZone({ path: `block.${bid}.image`, value: d.image })}</div>
+        <div class="editor-field"><label>Image alt text</label><input data-block-field="imageAlt" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(d.imageAlt || '')}" /></div>
+        <div class="editor-field"><label>Button text</label><input data-block-field="buttonText" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(d.buttonText || '')}" /></div>
+        <div class="editor-field"><label>Button link</label><input data-block-field="buttonHref" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(d.buttonHref || '')}" /></div>`;
+    case 'text':
+      return `
+        <div class="editor-field"><label>Heading (optional)</label><input data-block-field="heading" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(d.heading || '')}" /></div>
+        <div class="editor-field"><label>Body text</label><textarea data-block-field="body" data-block-id="${escapeHtml(bid)}" rows="8">${escapeHtml(d.body || '')}</textarea><span class="editor-helper">Separate paragraphs with a blank line.</span></div>`;
+    case 'image':
+      return `
+        <div class="editor-field"><label>Image</label>${renderDropZone({ path: `block.${bid}.src`, value: d.src })}</div>
+        <div class="editor-field"><label>Alt text</label><input data-block-field="alt" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(d.alt || '')}" /></div>
+        <div class="editor-field"><label>Caption</label><input data-block-field="caption" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(d.caption || '')}" /></div>
+        <div class="editor-field"><label>Link (optional)</label><input data-block-field="href" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(d.href || '')}" /></div>`;
+    case 'gallery':
+      return `
+        <div class="editor-field"><label>Images</label><span class="editor-helper">Add images to the gallery.</span></div>
+        <div id="gallery-items-${bid}">${(d.images || []).map((img, i) => `
+          <div class="editor-accordion" style="margin-bottom:0.5rem" data-gallery-item="${i}">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0">
+              <strong style="font-size:0.85rem">Image ${i + 1}</strong>
+              <button type="button" class="btn-outline btn-sm" data-remove-gallery="${i}" style="font-size:0.75rem">Remove</button>
+            </div>
+            <div class="editor-field"><label>Image</label>${renderDropZone({ path: `block.${bid}.gallery.${i}`, value: img.src })}</div>
+            <div class="editor-field"><label>Alt</label><input data-gallery-field="alt" data-gallery-idx="${i}" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(img.alt || '')}" /></div>
+            <div class="editor-field"><label>Caption</label><input data-gallery-field="caption" data-gallery-idx="${i}" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(img.caption || '')}" /></div>
+          </div>`).join('')}</div>
+        <button type="button" class="btn-outline btn-sm" data-add-gallery="${escapeHtml(bid)}">+ Add Image</button>`;
+    case 'cards':
+      return `
+        <div class="editor-field"><label>Cards</label><span class="editor-helper">Add cards to the grid.</span></div>
+        <div id="card-items-${bid}">${(d.cards || []).map((card, i) => `
+          <div class="editor-accordion" style="margin-bottom:0.5rem" data-card-item="${i}">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0">
+              <strong style="font-size:0.85rem">Card ${i + 1}</strong>
+              <button type="button" class="btn-outline btn-sm" data-remove-card="${i}" style="font-size:0.75rem">Remove</button>
+            </div>
+            <div class="editor-field"><label>Image</label>${renderDropZone({ path: `block.${bid}.card.${i}`, value: card.image })}</div>
+            <div class="editor-field"><label>Title</label><input data-card-field="title" data-card-idx="${i}" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(card.title || '')}" /></div>
+            <div class="editor-field"><label>Description</label><textarea data-card-field="description" data-card-idx="${i}" data-block-id="${escapeHtml(bid)}" rows="2">${escapeHtml(card.description || '')}</textarea></div>
+            <div class="editor-field"><label>Link</label><input data-card-field="href" data-card-idx="${i}" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(card.href || '')}" /></div>
+          </div>`).join('')}</div>
+        <button type="button" class="btn-outline btn-sm" data-add-card="${escapeHtml(bid)}">+ Add Card</button>`;
+    case 'cta':
+      return `
+        <div class="editor-field"><label>Heading</label><input data-block-field="heading" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(d.heading || '')}" /></div>
+        <div class="editor-field"><label>Description</label><textarea data-block-field="description" data-block-id="${escapeHtml(bid)}" rows="3">${escapeHtml(d.description || '')}</textarea></div>
+        <div class="editor-field"><label>Button text</label><input data-block-field="buttonText" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(d.buttonText || '')}" /></div>
+        <div class="editor-field"><label>Button link</label><input data-block-field="buttonHref" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(d.buttonHref || '')}" /></div>`;
+    case 'divider':
+      return `
+        <div class="editor-field"><label>Spacing size</label>
+          <select data-block-field="size" data-block-id="${escapeHtml(bid)}">
+            <option value="small" ${d.size === 'small' ? 'selected' : ''}>Small</option>
+            <option value="medium" ${d.size === 'medium' || !d.size ? 'selected' : ''}>Medium</option>
+            <option value="large" ${d.size === 'large' ? 'selected' : ''}>Large</option>
+          </select>
+        </div>`;
+    default:
+      return '<p class="editor-helper">Unknown block type.</p>';
+  }
+}
+
+function renderBlockPreviewItem(block, idx, total) {
+  const typeDef = BLOCK_TYPES.find((t) => t.type === block.type);
+  const label = typeDef?.label || block.type;
+  const isActive = block.id === editorState.activeBlockId;
+  return `
+    <div class="editor-block-item ${isActive ? 'is-active' : ''}" data-block-item="${escapeHtml(block.id)}">
+      <div class="editor-block-item-head">
+        <span><i class="bi ${typeDef?.icon || 'bi-square'}"></i> ${escapeHtml(label)}</span>
+        <div class="editor-block-item-actions">
+          ${idx > 0 ? `<button type="button" class="btn-outline btn-sm" data-move-block-up="${escapeHtml(block.id)}" title="Move up">↑</button>` : ''}
+          ${idx < total - 1 ? `<button type="button" class="btn-outline btn-sm" data-move-block-down="${escapeHtml(block.id)}" title="Move down">↓</button>` : ''}
+          <button type="button" class="btn-outline btn-sm" data-delete-block="${escapeHtml(block.id)}" title="Delete" style="color:#c23616">×</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderBlockTypePicker() {
+  return `
+    <div class="editor-block-picker">
+      <p class="editor-helper" style="margin:0 0 0.5rem"><strong>Add a block</strong></p>
+      <div class="editor-block-picker-grid">
+        ${BLOCK_TYPES.map((t) => `
+          <button type="button" class="editor-block-picker-btn" data-add-block-type="${t.type}">
+            <i class="bi ${t.icon}"></i>
+            <span>${escapeHtml(t.label)}</span>
+          </button>`).join('')}
+      </div>
+    </div>`;
+}
+
+// ── Page Editor ──
+
+function loadPage(pageId) {
+  const page = editorState.pages.find((p) => p.id === pageId);
+  if (!page) return;
+  editorState.activePage = structuredClone(page);
+  editorState.pageBlocks = structuredClone(page.blocks || []);
+  editorState.pageDirty = false;
+  editorState.activeBlockId = null;
+  editorState.activeSection = 'page:' + pageId;
+  renderPageEditor();
+}
+
+function loadNewPage() {
+  editorState.activePage = { id: null, slug: '/', title: '', description: '', blocks: [], published: false, showInNav: false, navOrder: 99 };
+  editorState.pageBlocks = [];
+  editorState.pageDirty = true;
+  editorState.activeBlockId = null;
+  editorState.activeSection = 'page:new';
+  renderPageEditor();
+}
+
+function renderPageEditor() {
+  const page = editorState.activePage;
+  if (!page) return;
+
+  document.querySelectorAll('[data-section-key]').forEach((b) => b.classList.remove('is-active'));
+  const pageBtn = document.querySelector(`[data-page-id="${page.id}"]`);
+  if (pageBtn) pageBtn.classList.add('is-active');
+
+  const pane = document.getElementById('editor-pane');
+  const isNew = !page.id;
+  const title = isNew ? 'New Page' : page.title;
+
+  pane.innerHTML = `
+    <header class="editor-pane-head">
+      <h2>${escapeHtml(title)}</h2>
+      <div class="editor-pane-actions">
+        ${editorState.pageDirty ? '<span class="editor-dirty-note">• unsaved changes</span>' : ''}
+        ${!isNew ? `<a class="btn-outline btn-sm" href="${escapeHtml(page.slug)}" target="_blank">View Page</a>` : ''}
+        <button class="ac-btn" type="button" data-save-page>${isNew ? 'Create Page' : 'Save Page'}</button>
+        ${!isNew ? `<button class="btn-outline btn-sm" type="button" data-delete-page="${escapeHtml(page.id)}" style="color:#c23616">Delete</button>` : ''}
+      </div>
+    </header>
+    <div class="editor-two-col">
+      <div class="editor-preview-col">
+        <p class="editor-preview-label">Blocks</p>
+        <div class="editor-preview-card">
+          <div id="page-block-list">
+            ${editorState.pageBlocks.map((b, i) => renderBlockPreviewItem(b, i, editorState.pageBlocks.length)).join('')}
+          </div>
+          ${renderBlockTypePicker()}
+        </div>
+      </div>
+      <div class="editor-fields-col" id="page-fields-col">
+        ${editorState.activeBlockId ? renderActiveBlockFields() : renderPageSettingsFields()}
+      </div>
+    </div>`;
+
+  bindPageEditorEvents(pane);
+}
+
+function renderPageSettingsFields() {
+  const page = editorState.activePage;
+  return `
+    <div class="editor-field-group">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <strong>Page Settings</strong>
+      </div>
+      <div class="editor-field">
+        <label>Page title</label>
+        <input data-page-setting="title" value="${escapeHtml(page.title || '')}" />
+      </div>
+      <div class="editor-field">
+        <label>URL slug</label>
+        <input data-page-setting="slug" value="${escapeHtml(page.slug || '/')}" />
+        <span class="editor-helper">Must start with / and use lowercase letters, numbers, hyphens.</span>
+      </div>
+      <div class="editor-field">
+        <label>Description</label>
+        <textarea data-page-setting="description" rows="3">${escapeHtml(page.description || '')}</textarea>
+      </div>
+      <div class="editor-field">
+        <label>Published</label>
+        <select data-page-setting="published">
+          <option value="true" ${page.published ? 'selected' : ''}>Yes — visible to visitors</option>
+          <option value="false" ${!page.published ? 'selected' : ''}>No — draft only</option>
+        </select>
+      </div>
+      <div class="editor-field">
+        <label>Show in navigation</label>
+        <select data-page-setting="showInNav">
+          <option value="true" ${page.showInNav ? 'selected' : ''}>Yes</option>
+          <option value="false" ${!page.showInNav ? 'selected' : ''}>No</option>
+        </select>
+      </div>
+      <div class="editor-field">
+        <label>Nav order</label>
+        <input data-page-setting="navOrder" type="number" min="0" max="999" value="${page.navOrder ?? 99}" />
+      </div>
+    </div>`;
+}
+
+function renderActiveBlockFields() {
+  const block = editorState.pageBlocks.find((b) => b.id === editorState.activeBlockId);
+  if (!block) return renderPageSettingsFields();
+  const typeDef = BLOCK_TYPES.find((t) => t.type === block.type);
+  return `
+    <div class="editor-field-group">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <strong><i class="bi ${typeDef?.icon || 'bi-square'}"></i> ${escapeHtml(typeDef?.label || block.type)}</strong>
+        <button type="button" class="btn-outline btn-sm" data-back-to-settings>← Page Settings</button>
+      </div>
+      ${renderBlockFields(block)}
+    </div>`;
+}
+
+function bindPageEditorEvents(root) {
+  root.querySelectorAll('[data-block-item]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      editorState.activeBlockId = el.dataset.blockItem;
+      renderPageEditor();
+    });
+  });
+
+  root.querySelectorAll('[data-move-block-up]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.moveBlockUp;
+      const idx = editorState.pageBlocks.findIndex((b) => b.id === id);
+      if (idx > 0) {
+        [editorState.pageBlocks[idx - 1], editorState.pageBlocks[idx]] = [editorState.pageBlocks[idx], editorState.pageBlocks[idx - 1]];
+        editorState.pageDirty = true;
+        renderPageEditor();
+      }
+    });
+  });
+
+  root.querySelectorAll('[data-move-block-down]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.moveBlockDown;
+      const idx = editorState.pageBlocks.findIndex((b) => b.id === id);
+      if (idx < editorState.pageBlocks.length - 1) {
+        [editorState.pageBlocks[idx], editorState.pageBlocks[idx + 1]] = [editorState.pageBlocks[idx + 1], editorState.pageBlocks[idx]];
+        editorState.pageDirty = true;
+        renderPageEditor();
+      }
+    });
+  });
+
+  root.querySelectorAll('[data-delete-block]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.deleteBlock;
+      editorState.pageBlocks = editorState.pageBlocks.filter((b) => b.id !== id);
+      if (editorState.activeBlockId === id) editorState.activeBlockId = null;
+      editorState.pageDirty = true;
+      renderPageEditor();
+    });
+  });
+
+  root.querySelectorAll('[data-add-block-type]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const typeDef = BLOCK_TYPES.find((t) => t.type === btn.dataset.addBlockType);
+      if (!typeDef) return;
+      const newBlock = { id: crypto.randomUUID(), type: typeDef.type, data: structuredClone(typeDef.defaults) };
+      editorState.pageBlocks.push(newBlock);
+      editorState.activeBlockId = newBlock.id;
+      editorState.pageDirty = true;
+      renderPageEditor();
+    });
+  });
+
+  root.querySelectorAll('[data-page-setting]').forEach((el) => {
+    const handler = el.tagName === 'SELECT' ? 'change' : 'input';
+    el.addEventListener(handler, () => {
+      const field = el.dataset.pageSetting;
+      let value = el.value;
+      if (field === 'published' || field === 'showInNav') value = value === 'true';
+      if (field === 'navOrder') value = Number(value) || 0;
+      editorState.activePage[field] = value;
+      editorState.pageDirty = true;
+    });
+  });
+
+  root.querySelectorAll('[data-block-field]').forEach((el) => {
+    const handler = el.tagName === 'SELECT' ? 'change' : 'input';
+    el.addEventListener(handler, () => {
+      const bid = el.dataset.blockId;
+      const field = el.dataset.blockField;
+      const block = editorState.pageBlocks.find((b) => b.id === bid);
+      if (block) {
+        block.data[field] = el.value;
+        editorState.pageDirty = true;
+      }
+    });
+  });
+
+  root.querySelectorAll('[data-gallery-field]').forEach((el) => {
+    el.addEventListener('input', () => {
+      const bid = el.dataset.blockId;
+      const idx = Number(el.dataset.galleryIdx);
+      const field = el.dataset.galleryField;
+      const block = editorState.pageBlocks.find((b) => b.id === bid);
+      if (block && block.data.images?.[idx]) {
+        block.data.images[idx][field] = el.value;
+        editorState.pageDirty = true;
+      }
+    });
+  });
+
+  root.querySelectorAll('[data-add-gallery]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const bid = btn.dataset.addGallery;
+      const block = editorState.pageBlocks.find((b) => b.id === bid);
+      if (block) {
+        if (!block.data.images) block.data.images = [];
+        block.data.images.push({ src: '', alt: '', caption: '' });
+        editorState.pageDirty = true;
+        renderPageEditor();
+      }
+    });
+  });
+
+  root.querySelectorAll('[data-remove-gallery]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.removeGallery);
+      const block = editorState.pageBlocks.find((b) => b.id === editorState.activeBlockId);
+      if (block && block.data.images) {
+        block.data.images.splice(idx, 1);
+        editorState.pageDirty = true;
+        renderPageEditor();
+      }
+    });
+  });
+
+  root.querySelectorAll('[data-card-field]').forEach((el) => {
+    el.addEventListener('input', () => {
+      const bid = el.dataset.blockId;
+      const idx = Number(el.dataset.cardIdx);
+      const field = el.dataset.cardField;
+      const block = editorState.pageBlocks.find((b) => b.id === bid);
+      if (block && block.data.cards?.[idx]) {
+        block.data.cards[idx][field] = el.value;
+        editorState.pageDirty = true;
+      }
+    });
+  });
+
+  root.querySelectorAll('[data-add-card]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const bid = btn.dataset.addCard;
+      const block = editorState.pageBlocks.find((b) => b.id === bid);
+      if (block) {
+        if (!block.data.cards) block.data.cards = [];
+        block.data.cards.push({ image: '', title: '', description: '', href: '' });
+        editorState.pageDirty = true;
+        renderPageEditor();
+      }
+    });
+  });
+
+  root.querySelectorAll('[data-remove-card]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.removeCard);
+      const block = editorState.pageBlocks.find((b) => b.id === editorState.activeBlockId);
+      if (block && block.data.cards) {
+        block.data.cards.splice(idx, 1);
+        editorState.pageDirty = true;
+        renderPageEditor();
+      }
+    });
+  });
+
+  const backBtn = root.querySelector('[data-back-to-settings]');
+  if (backBtn) {
+    backBtn.addEventListener('click', () => {
+      editorState.activeBlockId = null;
+      renderPageEditor();
+    });
+  }
+
+  const saveBtn = root.querySelector('[data-save-page]');
+  if (saveBtn) saveBtn.addEventListener('click', savePage);
+
+  const deleteBtn = root.querySelector('[data-delete-page]');
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', async () => {
+      const id = deleteBtn.dataset.deletePage;
+      if (!id) return;
+      try {
+        await api(`/api/admin/pages/${id}`, { method: 'DELETE' });
+        showBanner('success', 'Page deleted.');
+        editorState.activePage = null;
+        editorState.pageBlocks = [];
+        editorState.pageDirty = false;
+        await reloadPages();
+        renderPalette();
+        loadSection('hero');
+      } catch (err) {
+        showBanner('danger', err.message || 'Delete failed.');
+      }
+    });
+  }
+
+  bindDropZones(root, 'page-blocks');
+}
+
+async function savePage() {
+  const page = editorState.activePage;
+  if (!page) return;
+
+  const saveBtn = document.querySelector('[data-save-page]');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+
+  try {
+    const payload = {
+      slug: page.slug,
+      title: page.title,
+      description: page.description || '',
+      blocks: editorState.pageBlocks,
+      published: !!page.published,
+      showInNav: !!page.showInNav,
+      navOrder: page.navOrder ?? 99
+    };
+
+    if (page.id) {
+      await api(`/api/admin/pages/${page.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+    } else {
+      const result = await api('/api/admin/pages', { method: 'POST', body: JSON.stringify(payload) });
+      page.id = result.id;
+    }
+
+    editorState.pageDirty = false;
+    await reloadPages();
+    renderPalette();
+    showBanner('success', `Page "${page.title}" saved.`);
+
+    const savedPage = editorState.pages.find((p) => p.id === page.id);
+    if (savedPage) loadPage(savedPage.id);
+  } catch (err) {
+    showBanner('danger', err.message || 'Save failed.');
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = page.id ? 'Save Page' : 'Create Page'; }
+  }
+}
+
+function handleBlockImageApply(path, url) {
+  const parts = path.split('.');
+  if (parts[0] !== 'block') return false;
+  const bid = parts[1];
+  const block = editorState.pageBlocks.find((b) => b.id === bid);
+  if (!block) return false;
+
+  if (parts[2] === 'gallery' && parts[3] != null) {
+    const idx = Number(parts[3]);
+    if (block.data.images?.[idx]) {
+      block.data.images[idx].src = url;
+      editorState.pageDirty = true;
+      renderPageEditor();
+      return true;
+    }
+  } else if (parts[2] === 'card' && parts[3] != null) {
+    const idx = Number(parts[3]);
+    if (block.data.cards?.[idx]) {
+      block.data.cards[idx].image = url;
+      editorState.pageDirty = true;
+      renderPageEditor();
+      return true;
+    }
+  } else {
+    const field = parts[2];
+    block.data[field] = url;
+    editorState.pageDirty = true;
+    renderPageEditor();
+    return true;
+  }
+  return false;
+}
+
+async function reloadPages() {
+  try {
+    const result = await api('/api/admin/pages');
+    editorState.pages = result.items || [];
+  } catch {
+    editorState.pages = [];
+  }
+}
+
 // ── Logout ──
 
 function setupLogout() {
@@ -1001,17 +1536,19 @@ async function bootstrap() {
     const emailEl = document.getElementById('editor-email');
     if (emailEl) emailEl.textContent = session.email || '';
 
-    const [site, about, products, media] = await Promise.all([
+    const [site, about, products, media, pagesResult] = await Promise.all([
       api('/api/admin/blocks/site'),
       api('/api/admin/blocks/about'),
       api('/api/admin/blocks/products'),
-      api('/api/admin/media')
+      api('/api/admin/media'),
+      api('/api/admin/pages').catch(() => ({ items: [] }))
     ]);
 
     editorState.site = site;
     editorState.about = about;
     editorState.products = products;
     editorState.mediaLibrary = Array.isArray(media?.items) ? media.items : (Array.isArray(media) ? media : []);
+    editorState.pages = pagesResult.items || [];
 
     renderPalette();
     loadSection('hero');

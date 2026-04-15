@@ -6,6 +6,7 @@ import { initHomePage } from './pages/home.js';
 import { initLegalPage } from './pages/legal.js';
 import { initNewsPage } from './pages/news.js';
 import { initProductsPage } from './pages/products.js';
+import { initCustomPage } from './pages/custom.js';
 
 const pageInitializers = {
   home: initHomePage,
@@ -13,7 +14,8 @@ const pageInitializers = {
   events: initEventsPage,
   about: initAboutPage,
   news: initNewsPage,
-  legal: initLegalPage
+  legal: initLegalPage,
+  custom: initCustomPage
 };
 
 document.addEventListener('DOMContentLoaded', async () => {

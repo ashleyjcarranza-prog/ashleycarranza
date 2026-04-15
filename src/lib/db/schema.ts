@@ -54,6 +54,19 @@ export const adminCredentials = sqliteTable('admin_credentials', {
   updatedAt: text('updated_at').notNull()
 });
 
+export const pages = sqliteTable('pages', {
+  id: text('id').primaryKey(),
+  slug: text('slug').notNull().unique(),
+  title: text('title').notNull(),
+  description: text('description').notNull().default(''),
+  blocks: text('blocks').notNull().default('[]'),
+  published: integer('published', { mode: 'boolean' }).notNull().default(false),
+  showInNav: integer('show_in_nav', { mode: 'boolean' }).notNull().default(false),
+  navOrder: integer('nav_order').notNull().default(99),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull()
+});
+
 export const auditLog = sqliteTable('audit_log', {
   id: text('id').primaryKey(),
   actorEmail: text('actor_email').notNull(),
