@@ -483,7 +483,8 @@ adminApi.post('/pages', async (c) => {
     summary: `Created page "${parsed.data.title}".`
   });
 
-  return c.json({ success: true, id });
+  const saved = await getPageById(c.env, id);
+  return c.json({ success: true, id, updatedAt: saved?.updatedAt });
 });
 
 adminApi.get('/pages/:id', async (c) => {
@@ -495,6 +496,18 @@ adminApi.get('/pages/:id', async (c) => {
 adminApi.patch('/pages/:id', async (c) => {
   const existing = await getPageById(c.env, c.req.param('id'));
   if (!existing) return c.json({ error: 'Page not found.' }, 404);
+
+  const ifMatch = c.req.header('if-match');
+  if (ifMatch && ifMatch !== existing.updatedAt) {
+    return c.json(
+      {
+        error: 'This page was updated elsewhere. Reload to see the latest version before saving again.',
+        code: 'stale_version',
+        currentUpdatedAt: existing.updatedAt
+      },
+      409
+    );
+  }
 
   const parsed = pageInputSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
@@ -521,7 +534,8 @@ adminApi.patch('/pages/:id', async (c) => {
     changedFields: Object.keys(parsed.data)
   });
 
-  return c.json({ success: true });
+  const saved = await getPageById(c.env, c.req.param('id'));
+  return c.json({ success: true, updatedAt: saved?.updatedAt });
 });
 
 adminApi.delete('/pages/:id', async (c) => {

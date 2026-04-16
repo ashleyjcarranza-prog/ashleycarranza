@@ -281,7 +281,10 @@ export const pageInputSchema = z.object({
     .trim()
     .min(1)
     .max(200)
-    .regex(/^\/[a-z0-9][a-z0-9\-/]*$/, 'Slug must start with / and contain only lowercase letters, numbers, and hyphens.'),
+    .regex(
+      /^\/[a-z0-9][a-z0-9\-/]*$/,
+      'The web address needs to start with / and use lowercase letters, numbers, or hyphens (for example, /about or /my-page).'
+    ),
   title: z.string().trim().min(1).max(200),
   description: z.string().trim().max(600).default(''),
   blocks: z.array(blockSchema).default([]),

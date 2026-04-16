@@ -1,5 +1,11 @@
 import { getProductFallbackImage, getProductImageSource } from './core/format.js';
 import { assetUrl, withBasePath } from './core/site.js';
+import Sortable from '../vendor/sortable.esm.js';
+import { createEditorCanvas } from './admin/editor-canvas.js';
+import { createAutosave } from './admin/autosave.js';
+import { createHistory, bindUndoHotkeys } from './admin/history.js';
+import { BLOCK_TYPES, openBlockPicker } from './admin/block-picker.js';
+import { STRINGS } from './admin/strings.js';
 
 // ── State ──
 
@@ -999,17 +1005,7 @@ async function saveSection(key) {
   }
 }
 
-// ── Block Type Definitions ──
-
-const BLOCK_TYPES = [
-  { type: 'hero', label: 'Hero', icon: 'bi-image', defaults: { heading: '', subheading: '', image: '', imageAlt: '', buttonText: '', buttonHref: '' } },
-  { type: 'text', label: 'Text', icon: 'bi-text-paragraph', defaults: { heading: '', body: '' } },
-  { type: 'image', label: 'Image', icon: 'bi-card-image', defaults: { src: '', alt: '', caption: '', href: '' } },
-  { type: 'gallery', label: 'Gallery', icon: 'bi-grid-3x3-gap', defaults: { images: [] } },
-  { type: 'cards', label: 'Cards', icon: 'bi-columns-gap', defaults: { cards: [] } },
-  { type: 'cta', label: 'Call to Action', icon: 'bi-megaphone', defaults: { heading: '', description: '', buttonText: '', buttonHref: '' } },
-  { type: 'divider', label: 'Divider', icon: 'bi-hr', defaults: { size: 'medium' } }
-];
+// ── Block Type Definitions (imported from admin/block-picker.js) ──
 
 function renderBlockFields(block) {
   const d = block.data || {};
@@ -1082,42 +1078,44 @@ function renderBlockFields(block) {
   }
 }
 
-function renderBlockPreviewItem(block, idx, total) {
-  const typeDef = BLOCK_TYPES.find((t) => t.type === block.type);
-  const label = typeDef?.label || block.type;
-  const isActive = block.id === editorState.activeBlockId;
-  return `
-    <div class="editor-block-item ${isActive ? 'is-active' : ''}" data-block-item="${escapeHtml(block.id)}">
-      <div class="editor-block-item-head">
-        <span><i class="bi ${typeDef?.icon || 'bi-square'}"></i> ${escapeHtml(label)}</span>
-        <div class="editor-block-item-actions">
-          ${idx > 0 ? `<button type="button" class="btn-outline btn-sm" data-move-block-up="${escapeHtml(block.id)}" title="Move up">↑</button>` : ''}
-          ${idx < total - 1 ? `<button type="button" class="btn-outline btn-sm" data-move-block-down="${escapeHtml(block.id)}" title="Move down">↓</button>` : ''}
-          <button type="button" class="btn-outline btn-sm" data-delete-block="${escapeHtml(block.id)}" title="Delete" style="color:#c23616">×</button>
-        </div>
-      </div>
-    </div>`;
-}
-
-function renderBlockTypePicker() {
-  return `
-    <div class="editor-block-picker">
-      <p class="editor-helper" style="margin:0 0 0.5rem"><strong>Add a block</strong></p>
-      <div class="editor-block-picker-grid">
-        ${BLOCK_TYPES.map((t) => `
-          <button type="button" class="editor-block-picker-btn" data-add-block-type="${t.type}">
-            <i class="bi ${t.icon}"></i>
-            <span>${escapeHtml(t.label)}</span>
-          </button>`).join('')}
-      </div>
-    </div>`;
-}
-
 // ── Page Editor ──
+
+const AUTOSAVE_STORAGE_PREFIX = 'ac-editor-draft:';
+
+let pageCanvas = null;
+let pageHistory = null;
+let pageAutosave = null;
+let pageSortable = null;
+let outlineSortable = null;
+let unbindUndoHotkeys = null;
+let pageStatusTimer = null;
+let latestAutosaveStatus = { state: 'idle' };
+let metaPanelOpen = false;
+
+function getBlockTypeDef(type) {
+  return BLOCK_TYPES.find((t) => t.type === type) || null;
+}
+
+function renderBlockLabel(block) {
+  const def = getBlockTypeDef(block.type);
+  return def?.label || block.type;
+}
+
+function cleanupPageEditor() {
+  if (pageAutosave) { pageAutosave.flush?.().catch(() => {}); pageAutosave = null; }
+  if (pageSortable) { pageSortable.destroy?.(); pageSortable = null; }
+  if (outlineSortable) { outlineSortable.destroy?.(); outlineSortable = null; }
+  if (unbindUndoHotkeys) { unbindUndoHotkeys(); unbindUndoHotkeys = null; }
+  pageCanvas = null;
+  pageHistory = null;
+  latestAutosaveStatus = { state: 'idle' };
+  metaPanelOpen = false;
+}
 
 function loadPage(pageId) {
   const page = editorState.pages.find((p) => p.id === pageId);
   if (!page) return;
+  cleanupPageEditor();
   editorState.activePage = structuredClone(page);
   editorState.pageBlocks = structuredClone(page.blocks || []);
   editorState.pageDirty = false;
@@ -1127,12 +1125,303 @@ function loadPage(pageId) {
 }
 
 function loadNewPage() {
-  editorState.activePage = { id: null, slug: '/', title: '', description: '', blocks: [], published: false, showInNav: false, navOrder: 99 };
+  cleanupPageEditor();
+  editorState.activePage = { id: null, slug: '/', title: '', description: '', blocks: [], published: false, showInNav: false, navOrder: 99, updatedAt: null };
   editorState.pageBlocks = [];
   editorState.pageDirty = true;
   editorState.activeBlockId = null;
   editorState.activeSection = 'page:new';
   renderPageEditor();
+}
+
+function buildPagePayload() {
+  const page = editorState.activePage;
+  if (!page) return null;
+  if (!page.id && !(page.title && page.slug)) return null;
+  return {
+    slug: page.slug,
+    title: page.title,
+    description: page.description || '',
+    blocks: editorState.pageBlocks,
+    published: !!page.published,
+    showInNav: !!page.showInNav,
+    navOrder: page.navOrder ?? 99
+  };
+}
+
+async function savePagePayload(payload, { ifMatch } = {}) {
+  const page = editorState.activePage;
+  if (!page) throw new Error('No active page.');
+  const headers = ifMatch ? { 'If-Match': ifMatch } : {};
+
+  if (page.id) {
+    const result = await api(`/api/admin/pages/${page.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+      headers
+    }).catch((err) => {
+      if (err && /updated elsewhere/i.test(err.message)) {
+        const e = new Error(err.message);
+        e.code = 'stale_version';
+        throw e;
+      }
+      throw err;
+    });
+    return { updatedAt: result?.updatedAt || null };
+  }
+
+  const result = await api('/api/admin/pages', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+  page.id = result.id;
+  editorState.activeSection = 'page:' + result.id;
+  await reloadPages();
+  renderPalette();
+  return { updatedAt: result?.updatedAt || null };
+}
+
+function getPageUpdatedAt() {
+  return editorState.activePage?.updatedAt || null;
+}
+
+function setPageUpdatedAt(value) {
+  if (editorState.activePage) editorState.activePage.updatedAt = value;
+  const remote = editorState.pages.find((p) => p.id === editorState.activePage?.id);
+  if (remote) remote.updatedAt = value;
+}
+
+function pageStorageKey() {
+  return editorState.activePage?.id ? `${AUTOSAVE_STORAGE_PREFIX}${editorState.activePage.id}` : null;
+}
+
+function formatStatusPill(status) {
+  if (!status) return { text: STRINGS.status.savedNow, cls: 'is-idle' };
+  switch (status.state) {
+    case 'saving':
+      return { text: STRINGS.status.saving, cls: 'is-saving' };
+    case 'pending':
+      return { text: STRINGS.status.unsaved, cls: 'is-dirty' };
+    case 'saved': {
+      const savedAt = status.savedAt || Date.now();
+      const secs = (Date.now() - savedAt) / 1000;
+      return { text: STRINGS.status.savedAgo(secs), cls: 'is-saved' };
+    }
+    case 'conflict':
+      return { text: STRINGS.status.conflict, cls: 'is-error' };
+    case 'error':
+      return { text: STRINGS.status.error(status.error?.message), cls: 'is-error' };
+    default:
+      return { text: '', cls: 'is-idle' };
+  }
+}
+
+function updateStatusPill() {
+  const pill = document.getElementById('editor-status-pill');
+  if (!pill) return;
+  const { text, cls } = formatStatusPill(latestAutosaveStatus);
+  pill.className = `editor-status-pill ${cls}`;
+  pill.textContent = text;
+  pill.hidden = !text;
+}
+
+function scheduleStatusRefresh() {
+  if (pageStatusTimer) clearInterval(pageStatusTimer);
+  pageStatusTimer = setInterval(updateStatusPill, 15000);
+}
+
+function updateUndoButtons() {
+  if (!pageHistory) return;
+  const snap = pageHistory.snapshot();
+  const undoBtn = document.querySelector('[data-history-undo]');
+  const redoBtn = document.querySelector('[data-history-redo]');
+  if (undoBtn) undoBtn.disabled = !snap.canUndo;
+  if (redoBtn) redoBtn.disabled = !snap.canRedo;
+}
+
+function markPageMutated({ blockId } = {}) {
+  editorState.pageDirty = true;
+  if (blockId) editorState.activeBlockId = blockId;
+  if (pageAutosave) pageAutosave.schedule();
+  refreshOutline();
+  renderSidePanel();
+}
+
+function applyChange(description, mutator) {
+  const before = {
+    blocks: structuredClone(editorState.pageBlocks),
+    activeId: editorState.activeBlockId
+  };
+  const returned = mutator();
+  const after = {
+    blocks: structuredClone(editorState.pageBlocks),
+    activeId: editorState.activeBlockId
+  };
+  if (pageHistory) {
+    pageHistory.push(description, {
+      undo: () => {
+        editorState.pageBlocks = structuredClone(before.blocks);
+        editorState.activeBlockId = before.activeId;
+        fullCanvasRefresh();
+        markPageMutated();
+        showBanner('info', STRINGS.status.undo(description));
+      },
+      redo: () => {
+        editorState.pageBlocks = structuredClone(after.blocks);
+        editorState.activeBlockId = after.activeId;
+        fullCanvasRefresh();
+        markPageMutated();
+        showBanner('info', STRINGS.status.redo(description));
+      }
+    });
+    updateUndoButtons();
+  }
+  return returned;
+}
+
+function fullCanvasRefresh() {
+  if (pageCanvas) {
+    pageCanvas.setBlocks(editorState.pageBlocks, { activeId: editorState.activeBlockId });
+  }
+}
+
+function refreshOutline() {
+  const list = document.getElementById('editor-outline-list');
+  if (!list) return;
+  list.innerHTML = editorState.pageBlocks.map((b, i) => renderOutlineItem(b, i)).join('') ||
+    `<p class="editor-outline-empty">${escapeHtml(STRINGS.blocks.emptyCanvas)}</p>`;
+  bindOutlineItems(list);
+}
+
+function renderOutlineItem(block, i) {
+  const def = getBlockTypeDef(block.type);
+  const icon = def?.icon || 'bi-square';
+  const label = escapeHtml(def?.label || block.type);
+  const summary = escapeHtml(String(block.data?.heading || block.data?.title || block.data?.caption || '').slice(0, 60));
+  const active = block.id === editorState.activeBlockId ? 'is-active' : '';
+  return `
+    <div class="editor-outline-item ${active}" data-outline-id="${escapeHtml(block.id)}" tabindex="0" role="button" aria-label="${label} — section ${i + 1}">
+      <span class="editor-outline-handle" data-outline-handle title="Drag to reorder"><i class="bi bi-grip-vertical"></i></span>
+      <span class="editor-outline-icon"><i class="bi ${escapeHtml(icon)}"></i></span>
+      <span class="editor-outline-body">
+        <span class="editor-outline-label">${label}</span>
+        ${summary ? `<span class="editor-outline-summary">${summary}</span>` : ''}
+      </span>
+      <span class="editor-outline-actions">
+        <button type="button" class="editor-outline-btn" data-outline-duplicate="${escapeHtml(block.id)}" title="Duplicate"><i class="bi bi-files"></i></button>
+        <button type="button" class="editor-outline-btn" data-outline-delete="${escapeHtml(block.id)}" title="Remove"><i class="bi bi-trash"></i></button>
+      </span>
+    </div>`;
+}
+
+function bindOutlineItems(list) {
+  list.querySelectorAll('[data-outline-id]').forEach((el) => {
+    el.addEventListener('click', (event) => {
+      if (event.target.closest('.editor-outline-btn') || event.target.closest('.editor-outline-handle')) return;
+      selectBlock(el.dataset.outlineId);
+    });
+    el.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        selectBlock(el.dataset.outlineId);
+      }
+    });
+  });
+  list.querySelectorAll('[data-outline-duplicate]').forEach((btn) => {
+    btn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      duplicateBlock(btn.dataset.outlineDuplicate);
+    });
+  });
+  list.querySelectorAll('[data-outline-delete]').forEach((btn) => {
+    btn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      deleteBlock(btn.dataset.outlineDelete);
+    });
+  });
+
+  if (outlineSortable) outlineSortable.destroy();
+  outlineSortable = new Sortable(list, {
+    handle: '[data-outline-handle]',
+    animation: 150,
+    ghostClass: 'editor-outline-ghost',
+    onEnd: () => {
+      const newOrder = Array.from(list.querySelectorAll('[data-outline-id]')).map((el) => el.dataset.outlineId);
+      reorderBlocks(newOrder, 'Moved section');
+    }
+  });
+}
+
+function selectBlock(id) {
+  editorState.activeBlockId = id;
+  if (pageCanvas) pageCanvas.setActive(id);
+  refreshOutline();
+  renderSidePanel();
+}
+
+function addBlockBelow(anchorId, typeDef) {
+  if (!typeDef) return;
+  applyChange(`Added ${typeDef.label}`, () => {
+    const block = { id: crypto.randomUUID(), type: typeDef.type, data: structuredClone(typeDef.defaults) };
+    if (!anchorId) {
+      editorState.pageBlocks.push(block);
+    } else {
+      const idx = editorState.pageBlocks.findIndex((b) => b.id === anchorId);
+      editorState.pageBlocks.splice(idx + 1, 0, block);
+    }
+    editorState.activeBlockId = block.id;
+    fullCanvasRefresh();
+  });
+  markPageMutated();
+}
+
+function duplicateBlock(id) {
+  const idx = editorState.pageBlocks.findIndex((b) => b.id === id);
+  if (idx < 0) return;
+  const source = editorState.pageBlocks[idx];
+  applyChange(`Duplicated ${renderBlockLabel(source)}`, () => {
+    const copy = { id: crypto.randomUUID(), type: source.type, data: structuredClone(source.data) };
+    editorState.pageBlocks.splice(idx + 1, 0, copy);
+    editorState.activeBlockId = copy.id;
+    fullCanvasRefresh();
+  });
+  markPageMutated();
+}
+
+function deleteBlock(id) {
+  const idx = editorState.pageBlocks.findIndex((b) => b.id === id);
+  if (idx < 0) return;
+  const block = editorState.pageBlocks[idx];
+  applyChange(`Removed ${renderBlockLabel(block)}`, () => {
+    editorState.pageBlocks.splice(idx, 1);
+    if (editorState.activeBlockId === id) editorState.activeBlockId = null;
+    fullCanvasRefresh();
+  });
+  markPageMutated();
+}
+
+function reorderBlocks(orderedIds, description) {
+  const map = new Map(editorState.pageBlocks.map((b) => [b.id, b]));
+  applyChange(description || 'Reordered sections', () => {
+    editorState.pageBlocks = orderedIds.map((id) => map.get(id)).filter(Boolean);
+    fullCanvasRefresh();
+  });
+  markPageMutated();
+}
+
+function updateBlockField(blockId, field, value) {
+  const block = editorState.pageBlocks.find((b) => b.id === blockId);
+  if (!block) return;
+  const parts = field.split('.');
+  if (parts.length === 1) {
+    block.data[field] = value;
+  } else {
+    deepSet(block.data, field, value);
+  }
+  if (pageCanvas) pageCanvas.updateBlockData(block.id, block.data);
+  editorState.pageDirty = true;
+  if (pageAutosave) pageAutosave.schedule();
+  refreshOutline();
 }
 
 function renderPageEditor() {
@@ -1145,148 +1434,131 @@ function renderPageEditor() {
 
   const pane = document.getElementById('editor-pane');
   const isNew = !page.id;
-  const title = isNew ? 'New Page' : page.title;
 
   pane.innerHTML = `
-    <header class="editor-pane-head">
-      <h2>${escapeHtml(title)}</h2>
+    <header class="editor-pane-head editor-page-head">
+      <div class="editor-page-title-block">
+        <input class="editor-page-title-input" type="text" data-page-title value="${escapeHtml(page.title || '')}" placeholder="${escapeHtml(STRINGS.page.titlePlaceholder)}" aria-label="${escapeHtml(STRINGS.page.titleLabel)}" />
+        <span class="editor-status-pill is-idle" id="editor-status-pill" hidden></span>
+      </div>
       <div class="editor-pane-actions">
-        ${editorState.pageDirty ? '<span class="editor-dirty-note">• unsaved changes</span>' : ''}
-        ${!isNew ? `<a class="btn-outline btn-sm" href="${escapeHtml(page.slug)}" target="_blank">View Page</a>` : ''}
-        <button class="ac-btn" type="button" data-save-page>${isNew ? 'Create Page' : 'Save Page'}</button>
-        ${!isNew ? `<button class="btn-outline btn-sm" type="button" data-delete-page="${escapeHtml(page.id)}" style="color:#c23616">Delete</button>` : ''}
+        <button class="btn-outline btn-sm" type="button" data-history-undo title="Undo (Cmd-Z)" disabled><i class="bi bi-arrow-counterclockwise"></i><span class="sr-only">Undo</span></button>
+        <button class="btn-outline btn-sm" type="button" data-history-redo title="Redo (Cmd-Shift-Z)" disabled><i class="bi bi-arrow-clockwise"></i><span class="sr-only">Redo</span></button>
+        ${!isNew ? `<a class="btn-outline btn-sm" href="${escapeHtml(page.slug)}" target="_blank" rel="noopener">${escapeHtml(page.published ? STRINGS.page.viewLive : STRINGS.page.viewDraft)}</a>` : ''}
+        ${!isNew ? `<button class="btn-outline btn-sm" type="button" data-delete-page="${escapeHtml(page.id)}" style="color:#c23616">${escapeHtml(STRINGS.page.deletePage)}</button>` : ''}
       </div>
     </header>
-    <div class="editor-two-col">
-      <div class="editor-preview-col">
-        <p class="editor-preview-label">Blocks</p>
-        <div class="editor-preview-card">
-          <div id="page-block-list">
-            ${editorState.pageBlocks.map((b, i) => renderBlockPreviewItem(b, i, editorState.pageBlocks.length)).join('')}
-          </div>
-          ${renderBlockTypePicker()}
+
+    <div class="editor-page-shell">
+      <aside class="editor-outline" aria-label="Section outline">
+        <div class="editor-outline-head">
+          <strong>Sections</strong>
+          <button type="button" class="btn-outline btn-sm" data-add-section>+ ${escapeHtml(STRINGS.blocks.addSection)}</button>
+        </div>
+        <div class="editor-outline-list" id="editor-outline-list" role="list"></div>
+        <p class="editor-outline-hint">${escapeHtml(STRINGS.blocks.selectHint)}</p>
+      </aside>
+
+      <section class="editor-canvas-wrap">
+        <div id="editor-canvas-root"></div>
+        <div class="editor-canvas-footer">
+          <button type="button" class="ac-btn editor-add-section-cta" data-add-section-bottom>+ ${escapeHtml(STRINGS.blocks.addSection)}</button>
+        </div>
+      </section>
+
+      <aside class="editor-side-panel" id="editor-side-panel"></aside>
+    </div>
+
+    <details class="editor-page-meta" id="editor-page-meta" ${metaPanelOpen ? 'open' : ''}>
+      <summary>${escapeHtml(STRINGS.page.moreOptionsLabel)}</summary>
+      <div class="editor-page-meta-body"></div>
+    </details>`;
+
+  const canvasRoot = pane.querySelector('#editor-canvas-root');
+  pageCanvas = createEditorCanvas({
+    root: canvasRoot,
+    onSelect: (id) => { editorState.activeBlockId = id; refreshOutline(); renderSidePanel(); },
+    onEdit: ({ blockId, field, value }) => { updateBlockField(blockId, field, value); },
+    onRequestImage: (id) => {
+      const block = editorState.pageBlocks.find((b) => b.id === id);
+      if (!block) return;
+      const path = block.type === 'hero' ? `block.${id}.image` : `block.${id}.src`;
+      openMediaModal(path, 'page-blocks');
+    },
+    onAddBelow: (id) => openSectionPickerAt(document.querySelector(`[data-block-wrap="${id}"]`) || canvasRoot, id)
+  });
+  pageCanvas.setBlocks(editorState.pageBlocks, { activeId: editorState.activeBlockId });
+
+  pageHistory = createHistory();
+  unbindUndoHotkeys = bindUndoHotkeys(pageHistory);
+  pageHistory.subscribe(updateUndoButtons);
+
+  pageAutosave = createAutosave({
+    save: savePagePayload,
+    buildPayload: buildPagePayload,
+    getKey: pageStorageKey,
+    getUpdatedAt: getPageUpdatedAt,
+    setUpdatedAt: setPageUpdatedAt,
+    onStatus: (status) => { latestAutosaveStatus = status; updateStatusPill(); }
+  });
+  scheduleStatusRefresh();
+  updateStatusPill();
+
+  refreshOutline();
+  renderSidePanel();
+  renderPageMeta();
+  bindPageEditorHeader(pane);
+}
+
+function renderPageMeta() {
+  const body = document.querySelector('#editor-page-meta .editor-page-meta-body');
+  if (!body) return;
+  const page = editorState.activePage;
+  if (!page) return;
+
+  body.innerHTML = `
+    <div class="editor-field-group">
+      <div class="editor-field">
+        <label>${escapeHtml(STRINGS.page.slugLabel)}</label>
+        <input data-page-setting="slug" value="${escapeHtml(page.slug || '/')}" placeholder="${escapeHtml(STRINGS.page.slugPlaceholder)}" />
+        <span class="editor-helper">${escapeHtml(STRINGS.page.slugHelper)}</span>
+      </div>
+      <div class="editor-field">
+        <label>${escapeHtml(STRINGS.page.descriptionLabel)}</label>
+        <textarea data-page-setting="description" rows="3" placeholder="${escapeHtml(STRINGS.page.descriptionPlaceholder)}">${escapeHtml(page.description || '')}</textarea>
+        <span class="editor-helper">${escapeHtml(STRINGS.page.descriptionHelper)}</span>
+      </div>
+      <div class="editor-field">
+        <label>${escapeHtml(STRINGS.page.publishedLabel)}</label>
+        <div class="editor-toggle-row">
+          <label class="editor-toggle-option ${page.published ? 'is-active' : ''}">
+            <input type="radio" name="page-published" value="true" ${page.published ? 'checked' : ''} data-page-setting="published" />
+            <strong>${escapeHtml(STRINGS.page.publishedOnTitle)}</strong>
+            <small>${escapeHtml(STRINGS.page.publishedOnNote)}</small>
+          </label>
+          <label class="editor-toggle-option ${!page.published ? 'is-active' : ''}">
+            <input type="radio" name="page-published" value="false" ${!page.published ? 'checked' : ''} data-page-setting="published" />
+            <strong>${escapeHtml(STRINGS.page.publishedOffTitle)}</strong>
+            <small>${escapeHtml(STRINGS.page.publishedOffNote)}</small>
+          </label>
         </div>
       </div>
-      <div class="editor-fields-col" id="page-fields-col">
-        ${editorState.activeBlockId ? renderActiveBlockFields() : renderPageSettingsFields()}
-      </div>
-    </div>`;
-
-  bindPageEditorEvents(pane);
-}
-
-function renderPageSettingsFields() {
-  const page = editorState.activePage;
-  return `
-    <div class="editor-field-group">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <strong>Page Settings</strong>
-      </div>
       <div class="editor-field">
-        <label>Page title</label>
-        <input data-page-setting="title" value="${escapeHtml(page.title || '')}" />
-      </div>
-      <div class="editor-field">
-        <label>URL slug</label>
-        <input data-page-setting="slug" value="${escapeHtml(page.slug || '/')}" />
-        <span class="editor-helper">Must start with / and use lowercase letters, numbers, hyphens.</span>
-      </div>
-      <div class="editor-field">
-        <label>Description</label>
-        <textarea data-page-setting="description" rows="3">${escapeHtml(page.description || '')}</textarea>
-      </div>
-      <div class="editor-field">
-        <label>Published</label>
-        <select data-page-setting="published">
-          <option value="true" ${page.published ? 'selected' : ''}>Yes — visible to visitors</option>
-          <option value="false" ${!page.published ? 'selected' : ''}>No — draft only</option>
-        </select>
-      </div>
-      <div class="editor-field">
-        <label>Show in navigation</label>
+        <label>${escapeHtml(STRINGS.page.showInNavLabel)}</label>
         <select data-page-setting="showInNav">
-          <option value="true" ${page.showInNav ? 'selected' : ''}>Yes</option>
-          <option value="false" ${!page.showInNav ? 'selected' : ''}>No</option>
+          <option value="true" ${page.showInNav ? 'selected' : ''}>${escapeHtml(STRINGS.page.showInNavYes)}</option>
+          <option value="false" ${!page.showInNav ? 'selected' : ''}>${escapeHtml(STRINGS.page.showInNavNo)}</option>
         </select>
       </div>
       <div class="editor-field">
-        <label>Nav order</label>
+        <label>${escapeHtml(STRINGS.page.navOrderLabel)}</label>
         <input data-page-setting="navOrder" type="number" min="0" max="999" value="${page.navOrder ?? 99}" />
+        <span class="editor-helper">${escapeHtml(STRINGS.page.navOrderHelper)}</span>
       </div>
     </div>`;
-}
 
-function renderActiveBlockFields() {
-  const block = editorState.pageBlocks.find((b) => b.id === editorState.activeBlockId);
-  if (!block) return renderPageSettingsFields();
-  const typeDef = BLOCK_TYPES.find((t) => t.type === block.type);
-  return `
-    <div class="editor-field-group">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <strong><i class="bi ${typeDef?.icon || 'bi-square'}"></i> ${escapeHtml(typeDef?.label || block.type)}</strong>
-        <button type="button" class="btn-outline btn-sm" data-back-to-settings>← Page Settings</button>
-      </div>
-      ${renderBlockFields(block)}
-    </div>`;
-}
-
-function bindPageEditorEvents(root) {
-  root.querySelectorAll('[data-block-item]').forEach((el) => {
-    el.addEventListener('click', (e) => {
-      if (e.target.closest('button')) return;
-      editorState.activeBlockId = el.dataset.blockItem;
-      renderPageEditor();
-    });
-  });
-
-  root.querySelectorAll('[data-move-block-up]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.moveBlockUp;
-      const idx = editorState.pageBlocks.findIndex((b) => b.id === id);
-      if (idx > 0) {
-        [editorState.pageBlocks[idx - 1], editorState.pageBlocks[idx]] = [editorState.pageBlocks[idx], editorState.pageBlocks[idx - 1]];
-        editorState.pageDirty = true;
-        renderPageEditor();
-      }
-    });
-  });
-
-  root.querySelectorAll('[data-move-block-down]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.moveBlockDown;
-      const idx = editorState.pageBlocks.findIndex((b) => b.id === id);
-      if (idx < editorState.pageBlocks.length - 1) {
-        [editorState.pageBlocks[idx], editorState.pageBlocks[idx + 1]] = [editorState.pageBlocks[idx + 1], editorState.pageBlocks[idx]];
-        editorState.pageDirty = true;
-        renderPageEditor();
-      }
-    });
-  });
-
-  root.querySelectorAll('[data-delete-block]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.deleteBlock;
-      editorState.pageBlocks = editorState.pageBlocks.filter((b) => b.id !== id);
-      if (editorState.activeBlockId === id) editorState.activeBlockId = null;
-      editorState.pageDirty = true;
-      renderPageEditor();
-    });
-  });
-
-  root.querySelectorAll('[data-add-block-type]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const typeDef = BLOCK_TYPES.find((t) => t.type === btn.dataset.addBlockType);
-      if (!typeDef) return;
-      const newBlock = { id: crypto.randomUUID(), type: typeDef.type, data: structuredClone(typeDef.defaults) };
-      editorState.pageBlocks.push(newBlock);
-      editorState.activeBlockId = newBlock.id;
-      editorState.pageDirty = true;
-      renderPageEditor();
-    });
-  });
-
-  root.querySelectorAll('[data-page-setting]').forEach((el) => {
-    const handler = el.tagName === 'SELECT' ? 'change' : 'input';
+  body.querySelectorAll('[data-page-setting]').forEach((el) => {
+    const handler = el.tagName === 'SELECT' ? 'change' : (el.type === 'radio' ? 'change' : 'input');
     el.addEventListener(handler, () => {
       const field = el.dataset.pageSetting;
       let value = el.value;
@@ -1294,169 +1566,193 @@ function bindPageEditorEvents(root) {
       if (field === 'navOrder') value = Number(value) || 0;
       editorState.activePage[field] = value;
       editorState.pageDirty = true;
+      if (field === 'published') renderPageMeta();
+      if (pageAutosave) pageAutosave.schedule();
     });
   });
 
-  root.querySelectorAll('[data-block-field]').forEach((el) => {
-    const handler = el.tagName === 'SELECT' ? 'change' : 'input';
-    el.addEventListener(handler, () => {
-      const bid = el.dataset.blockId;
-      const field = el.dataset.blockField;
-      const block = editorState.pageBlocks.find((b) => b.id === bid);
-      if (block) {
-        block.data[field] = el.value;
-        editorState.pageDirty = true;
-      }
+  const details = document.getElementById('editor-page-meta');
+  if (details) {
+    details.addEventListener('toggle', () => { metaPanelOpen = details.open; }, { once: true });
+  }
+}
+
+function renderSidePanel() {
+  const panel = document.getElementById('editor-side-panel');
+  if (!panel) return;
+  const block = editorState.pageBlocks.find((b) => b.id === editorState.activeBlockId);
+  if (!block) {
+    panel.innerHTML = `
+      <div class="editor-side-empty">
+        <p><strong>No section selected.</strong></p>
+        <p>${escapeHtml(STRINGS.blocks.selectHint)}</p>
+      </div>`;
+    return;
+  }
+  const typeDef = getBlockTypeDef(block.type);
+  panel.innerHTML = `
+    <header class="editor-side-head">
+      <strong><i class="bi ${typeDef?.icon || 'bi-square'}"></i> ${escapeHtml(typeDef?.label || block.type)}</strong>
+      <div class="editor-side-actions">
+        <button type="button" class="editor-side-btn" data-side-duplicate="${escapeHtml(block.id)}" title="Duplicate"><i class="bi bi-files"></i></button>
+        <button type="button" class="editor-side-btn" data-side-delete="${escapeHtml(block.id)}" title="Remove"><i class="bi bi-trash"></i></button>
+      </div>
+    </header>
+    <div class="editor-side-body">
+      ${renderBlockFields(block)}
+    </div>`;
+
+  bindSideFieldEvents(panel);
+}
+
+function bindSideFieldEvents(panel) {
+  panel.querySelector('[data-side-duplicate]')?.addEventListener('click', (event) => {
+    duplicateBlock(event.currentTarget.dataset.sideDuplicate);
+  });
+  panel.querySelector('[data-side-delete]')?.addEventListener('click', (event) => {
+    deleteBlock(event.currentTarget.dataset.sideDelete);
+  });
+
+  panel.querySelectorAll('[data-block-field]').forEach((el) => {
+    const evt = el.tagName === 'SELECT' ? 'change' : 'input';
+    el.addEventListener(evt, () => {
+      updateBlockField(el.dataset.blockId, el.dataset.blockField, el.value);
     });
   });
 
-  root.querySelectorAll('[data-gallery-field]').forEach((el) => {
+  panel.querySelectorAll('[data-gallery-field]').forEach((el) => {
     el.addEventListener('input', () => {
       const bid = el.dataset.blockId;
       const idx = Number(el.dataset.galleryIdx);
       const field = el.dataset.galleryField;
       const block = editorState.pageBlocks.find((b) => b.id === bid);
-      if (block && block.data.images?.[idx]) {
-        block.data.images[idx][field] = el.value;
-        editorState.pageDirty = true;
-      }
+      if (!block?.data?.images?.[idx]) return;
+      block.data.images[idx][field] = el.value;
+      if (pageCanvas) pageCanvas.updateBlockData(bid, block.data);
+      editorState.pageDirty = true;
+      if (pageAutosave) pageAutosave.schedule();
     });
   });
 
-  root.querySelectorAll('[data-add-gallery]').forEach((btn) => {
+  panel.querySelectorAll('[data-add-gallery]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const bid = btn.dataset.addGallery;
       const block = editorState.pageBlocks.find((b) => b.id === bid);
-      if (block) {
+      if (!block) return;
+      applyChange('Added gallery image', () => {
         if (!block.data.images) block.data.images = [];
         block.data.images.push({ src: '', alt: '', caption: '' });
-        editorState.pageDirty = true;
-        renderPageEditor();
-      }
+        fullCanvasRefresh();
+      });
+      markPageMutated({ blockId: bid });
     });
   });
 
-  root.querySelectorAll('[data-remove-gallery]').forEach((btn) => {
+  panel.querySelectorAll('[data-remove-gallery]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const idx = Number(btn.dataset.removeGallery);
       const block = editorState.pageBlocks.find((b) => b.id === editorState.activeBlockId);
-      if (block && block.data.images) {
+      if (!block?.data?.images) return;
+      applyChange('Removed gallery image', () => {
         block.data.images.splice(idx, 1);
-        editorState.pageDirty = true;
-        renderPageEditor();
-      }
+        fullCanvasRefresh();
+      });
+      markPageMutated({ blockId: block.id });
     });
   });
 
-  root.querySelectorAll('[data-card-field]').forEach((el) => {
+  panel.querySelectorAll('[data-card-field]').forEach((el) => {
     el.addEventListener('input', () => {
       const bid = el.dataset.blockId;
       const idx = Number(el.dataset.cardIdx);
       const field = el.dataset.cardField;
       const block = editorState.pageBlocks.find((b) => b.id === bid);
-      if (block && block.data.cards?.[idx]) {
-        block.data.cards[idx][field] = el.value;
-        editorState.pageDirty = true;
-      }
+      if (!block?.data?.cards?.[idx]) return;
+      block.data.cards[idx][field] = el.value;
+      if (pageCanvas) pageCanvas.updateBlockData(bid, block.data);
+      editorState.pageDirty = true;
+      if (pageAutosave) pageAutosave.schedule();
     });
   });
 
-  root.querySelectorAll('[data-add-card]').forEach((btn) => {
+  panel.querySelectorAll('[data-add-card]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const bid = btn.dataset.addCard;
       const block = editorState.pageBlocks.find((b) => b.id === bid);
-      if (block) {
+      if (!block) return;
+      applyChange('Added card', () => {
         if (!block.data.cards) block.data.cards = [];
         block.data.cards.push({ image: '', title: '', description: '', href: '' });
-        editorState.pageDirty = true;
-        renderPageEditor();
-      }
+        fullCanvasRefresh();
+      });
+      markPageMutated({ blockId: bid });
     });
   });
 
-  root.querySelectorAll('[data-remove-card]').forEach((btn) => {
+  panel.querySelectorAll('[data-remove-card]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const idx = Number(btn.dataset.removeCard);
       const block = editorState.pageBlocks.find((b) => b.id === editorState.activeBlockId);
-      if (block && block.data.cards) {
+      if (!block?.data?.cards) return;
+      applyChange('Removed card', () => {
         block.data.cards.splice(idx, 1);
-        editorState.pageDirty = true;
-        renderPageEditor();
-      }
+        fullCanvasRefresh();
+      });
+      markPageMutated({ blockId: block.id });
     });
   });
 
-  const backBtn = root.querySelector('[data-back-to-settings]');
-  if (backBtn) {
-    backBtn.addEventListener('click', () => {
-      editorState.activeBlockId = null;
-      renderPageEditor();
-    });
-  }
-
-  const saveBtn = root.querySelector('[data-save-page]');
-  if (saveBtn) saveBtn.addEventListener('click', savePage);
-
-  const deleteBtn = root.querySelector('[data-delete-page]');
-  if (deleteBtn) {
-    deleteBtn.addEventListener('click', async () => {
-      const id = deleteBtn.dataset.deletePage;
-      if (!id) return;
-      try {
-        await api(`/api/admin/pages/${id}`, { method: 'DELETE' });
-        showBanner('success', 'Page deleted.');
-        editorState.activePage = null;
-        editorState.pageBlocks = [];
-        editorState.pageDirty = false;
-        await reloadPages();
-        renderPalette();
-        loadSection('hero');
-      } catch (err) {
-        showBanner('danger', err.message || 'Delete failed.');
-      }
-    });
-  }
-
-  bindDropZones(root, 'page-blocks');
+  bindDropZones(panel, 'page-blocks');
 }
 
-async function savePage() {
-  const page = editorState.activePage;
-  if (!page) return;
-
-  const saveBtn = document.querySelector('[data-save-page]');
-  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
-
-  try {
-    const payload = {
-      slug: page.slug,
-      title: page.title,
-      description: page.description || '',
-      blocks: editorState.pageBlocks,
-      published: !!page.published,
-      showInNav: !!page.showInNav,
-      navOrder: page.navOrder ?? 99
-    };
-
-    if (page.id) {
-      await api(`/api/admin/pages/${page.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
-    } else {
-      const result = await api('/api/admin/pages', { method: 'POST', body: JSON.stringify(payload) });
-      page.id = result.id;
+function openSectionPickerAt(anchor, anchorId) {
+  openBlockPicker({
+    anchor,
+    onPick: (block) => {
+      addBlockBelow(anchorId, getBlockTypeDef(block.type));
     }
+  });
+}
 
-    editorState.pageDirty = false;
-    await reloadPages();
-    renderPalette();
-    showBanner('success', `Page "${page.title}" saved.`);
-
-    const savedPage = editorState.pages.find((p) => p.id === page.id);
-    if (savedPage) loadPage(savedPage.id);
-  } catch (err) {
-    showBanner('danger', err.message || 'Save failed.');
-  } finally {
-    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = page.id ? 'Save Page' : 'Create Page'; }
+function bindPageEditorHeader(pane) {
+  const titleInput = pane.querySelector('[data-page-title]');
+  if (titleInput) {
+    titleInput.addEventListener('input', () => {
+      editorState.activePage.title = titleInput.value;
+      editorState.pageDirty = true;
+      if (pageAutosave) pageAutosave.schedule();
+    });
   }
+
+  pane.querySelector('[data-history-undo]')?.addEventListener('click', () => pageHistory?.undo());
+  pane.querySelector('[data-history-redo]')?.addEventListener('click', () => pageHistory?.redo());
+
+  pane.querySelector('[data-add-section]')?.addEventListener('click', (event) => {
+    openSectionPickerAt(event.currentTarget, null);
+  });
+  pane.querySelector('[data-add-section-bottom]')?.addEventListener('click', (event) => {
+    openSectionPickerAt(event.currentTarget, null);
+  });
+
+  pane.querySelector('[data-delete-page]')?.addEventListener('click', async (event) => {
+    const id = event.currentTarget.dataset.deletePage;
+    if (!id) return;
+    const confirmed = confirm('Delete this page permanently? This cannot be undone.');
+    if (!confirmed) return;
+    try {
+      await api(`/api/admin/pages/${id}`, { method: 'DELETE' });
+      showBanner('success', 'Page deleted.');
+      cleanupPageEditor();
+      editorState.activePage = null;
+      editorState.pageBlocks = [];
+      editorState.pageDirty = false;
+      await reloadPages();
+      renderPalette();
+      loadSection('hero');
+    } catch (err) {
+      showBanner('danger', err.message || 'Delete failed.');
+    }
+  });
 }
 
 function handleBlockImageApply(path, url) {
@@ -1468,28 +1764,28 @@ function handleBlockImageApply(path, url) {
 
   if (parts[2] === 'gallery' && parts[3] != null) {
     const idx = Number(parts[3]);
-    if (block.data.images?.[idx]) {
+    if (!block.data.images?.[idx]) return false;
+    applyChange('Updated gallery image', () => {
       block.data.images[idx].src = url;
-      editorState.pageDirty = true;
-      renderPageEditor();
-      return true;
-    }
+    });
   } else if (parts[2] === 'card' && parts[3] != null) {
     const idx = Number(parts[3]);
-    if (block.data.cards?.[idx]) {
+    if (!block.data.cards?.[idx]) return false;
+    applyChange('Updated card image', () => {
       block.data.cards[idx].image = url;
-      editorState.pageDirty = true;
-      renderPageEditor();
-      return true;
-    }
+    });
   } else {
     const field = parts[2];
-    block.data[field] = url;
-    editorState.pageDirty = true;
-    renderPageEditor();
-    return true;
+    applyChange('Updated image', () => {
+      block.data[field] = url;
+    });
   }
-  return false;
+  if (pageCanvas) pageCanvas.updateBlockData(bid, block.data);
+  editorState.pageDirty = true;
+  if (pageAutosave) pageAutosave.schedule();
+  renderSidePanel();
+  refreshOutline();
+  return true;
 }
 
 async function reloadPages() {
