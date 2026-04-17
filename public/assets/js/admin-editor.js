@@ -869,14 +869,16 @@ function openMediaModal(path, sectionKey) {
 
 function renderPalette() {
   const palette = document.getElementById('editor-palette');
+  const activeKey = editorState.activeSection || '';
+  const activePageId = editorState.activePage?.id || '';
   const sectionButtons = SECTION_REGISTRY.map((s) => `
-    <button class="editor-palette-item" data-section-key="${s.key}">
+    <button class="editor-palette-item${activeKey === s.key ? ' is-active' : ''}" data-section-key="${s.key}">
       ${escapeHtml(s.label)}
       <small>${escapeHtml(s.description)}</small>
     </button>`).join('');
 
   const pageButtons = editorState.pages.map((p) => `
-    <button class="editor-palette-item" data-page-id="${escapeHtml(p.id)}">
+    <button class="editor-palette-item${activePageId === p.id ? ' is-active' : ''}" data-page-id="${escapeHtml(p.id)}">
       ${escapeHtml(p.title || 'Untitled')}
       <small>${escapeHtml(p.slug)} ${p.published ? '' : '(draft)'}</small>
     </button>`).join('');
@@ -903,12 +905,11 @@ function renderPalette() {
   palette.querySelector('[data-new-page]')?.addEventListener('click', () => loadNewPage());
 }
 
-function loadSection(key) {
+async function loadSection(key) {
+  if (pageAutosave || editorState.activePage) await cleanupPageEditor();
   editorState.activeSection = key;
-
-  document.querySelectorAll('[data-section-key]').forEach((b) => {
-    b.classList.toggle('is-active', b.dataset.sectionKey === key);
-  });
+  editorState.activePage = null;
+  renderPalette();
 
   const section = SECTION_REGISTRY.find((s) => s.key === key);
   if (!section) return;
@@ -1104,8 +1105,11 @@ function renderBlockLabel(block) {
   return def?.label || block.type;
 }
 
-function cleanupPageEditor() {
-  if (pageAutosave) { pageAutosave.flush?.().catch(() => {}); pageAutosave = null; }
+async function cleanupPageEditor() {
+  if (pageAutosave) {
+    try { await pageAutosave.flush?.(); } catch { /* ignore */ }
+    pageAutosave = null;
+  }
   if (pageSortable) { pageSortable.destroy?.(); pageSortable = null; }
   if (outlineSortable) { outlineSortable.destroy?.(); outlineSortable = null; }
   if (unbindUndoHotkeys) { unbindUndoHotkeys(); unbindUndoHotkeys = null; }
@@ -1115,10 +1119,10 @@ function cleanupPageEditor() {
   metaPanelOpen = false;
 }
 
-function loadPage(pageId) {
+async function loadPage(pageId) {
+  await cleanupPageEditor();
   const page = editorState.pages.find((p) => p.id === pageId);
   if (!page) return;
-  cleanupPageEditor();
   editorState.activePage = structuredClone(page);
   editorState.pageBlocks = structuredClone(page.blocks || []);
   editorState.pageDirty = false;
@@ -1127,8 +1131,8 @@ function loadPage(pageId) {
   renderPageEditor();
 }
 
-function loadNewPage() {
-  cleanupPageEditor();
+async function loadNewPage() {
+  await cleanupPageEditor();
   editorState.activePage = { id: null, slug: '/', title: '', description: '', blocks: [], published: false, showInNav: false, navOrder: 99, updatedAt: null };
   editorState.pageBlocks = [];
   editorState.pageDirty = true;
@@ -1170,6 +1174,7 @@ async function savePagePayload(payload, { ifMatch } = {}) {
       }
       throw err;
     });
+    syncPagesCacheAfterSave(page.id, payload);
     return { updatedAt: result?.updatedAt || null };
   }
 
@@ -1182,6 +1187,21 @@ async function savePagePayload(payload, { ifMatch } = {}) {
   await reloadPages();
   renderPalette();
   return { updatedAt: result?.updatedAt || null };
+}
+
+function syncPagesCacheAfterSave(pageId, payload) {
+  const idx = editorState.pages.findIndex((p) => p.id === pageId);
+  if (idx < 0) return;
+  editorState.pages[idx] = {
+    ...editorState.pages[idx],
+    slug: payload.slug,
+    title: payload.title,
+    description: payload.description,
+    blocks: structuredClone(payload.blocks),
+    published: payload.published,
+    showInNav: payload.showInNav,
+    navOrder: payload.navOrder
+  };
 }
 
 function getPageUpdatedAt() {
@@ -1431,9 +1451,7 @@ function renderPageEditor() {
   const page = editorState.activePage;
   if (!page) return;
 
-  document.querySelectorAll('[data-section-key]').forEach((b) => b.classList.remove('is-active'));
-  const pageBtn = document.querySelector(`[data-page-id="${page.id}"]`);
-  if (pageBtn) pageBtn.classList.add('is-active');
+  renderPalette();
 
   const pane = document.getElementById('editor-pane');
   const isNew = !page.id;
@@ -1813,7 +1831,7 @@ function bindPageEditorHeader(pane) {
     try {
       await api(`/api/admin/pages/${id}`, { method: 'DELETE' });
       showBanner('success', 'Page deleted.');
-      cleanupPageEditor();
+      await cleanupPageEditor();
       editorState.activePage = null;
       editorState.pageBlocks = [];
       editorState.pageDirty = false;
