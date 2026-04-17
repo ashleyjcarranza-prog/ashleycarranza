@@ -1545,3 +1545,31 @@ html[data-theme="dark"] .editor-rt-toolbar { background: #0f0f12; }
   display: inline-flex; align-items: center; gap: 0.3rem;
   margin: 0;
 }
+
+/* ── Shadowed-page banner ── */
+.editor-shadow-banner {
+  background: rgba(212, 155, 0, 0.1);
+  border: 1px solid rgba(212, 155, 0, 0.3);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+.editor-shadow-banner strong { display: block; margin-bottom: 0.25rem; }
+.editor-shadow-banner p { margin: 0; color: var(--text-muted, #555); }
+.editor-shadow-banner code {
+  background: rgba(0,0,0,0.05);
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  font-size: 0.85em;
+}
+.editor-shadow-link {
+  background: transparent; border: 0; padding: 0;
+  color: var(--link, #1a6f3a);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.editor-shadow-link:hover { color: #2a8f4f; }
+
+html[data-theme="dark"] .editor-shadow-banner code { background: rgba(255,255,255,0.08); }

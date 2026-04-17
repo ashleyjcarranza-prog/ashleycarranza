@@ -1189,6 +1189,25 @@ async function savePagePayload(payload, { ifMatch } = {}) {
   return { updatedAt: result?.updatedAt || null };
 }
 
+// Built-in static pages shadow these slugs. Editing block-page entries at
+// these slugs has no effect on the live site until the static file is removed.
+const SHADOWED_SLUGS = {
+  '/': { label: 'Home page', sectionKey: 'hero', sectionLabel: 'Home Hero' },
+  '/about': { label: 'About page', sectionKey: 'about', sectionLabel: 'About Page' },
+  '/my-work': { label: 'My Work page', sectionKey: 'products', sectionLabel: 'My Work' },
+  '/news': { label: 'News page' },
+  '/speaking-features': { label: 'Speaking & Features page' },
+  '/contact': { label: 'Contact page' },
+  '/privacy': { label: 'Privacy page' },
+  '/terms': { label: 'Terms page' }
+};
+
+function getShadowedPageInfo(slug) {
+  if (!slug) return null;
+  const normalized = slug.replace(/\/+$/, '') || '/';
+  return SHADOWED_SLUGS[normalized] || null;
+}
+
 function syncPagesCacheAfterSave(pageId, payload) {
   const idx = editorState.pages.findIndex((p) => p.id === pageId);
   if (idx < 0) return;
@@ -1455,8 +1474,15 @@ function renderPageEditor() {
 
   const pane = document.getElementById('editor-pane');
   const isNew = !page.id;
+  const shadowInfo = getShadowedPageInfo(page.slug);
 
   pane.innerHTML = `
+    ${shadowInfo ? `
+      <div class="editor-shadow-banner" role="note">
+        <strong><i class="bi bi-info-circle"></i> Heads up — this page is shadowed by a built-in page.</strong>
+        <p>The live URL <code>${escapeHtml(page.slug)}</code> is currently served by the built-in <em>${escapeHtml(shadowInfo.label)}</em>${shadowInfo.sectionKey ? `, which you edit from the <button type="button" class="editor-shadow-link" data-shadow-section="${escapeHtml(shadowInfo.sectionKey)}">${escapeHtml(shadowInfo.sectionLabel || shadowInfo.label)}</button> panel above` : ''}. Sections you add here won't appear at that URL until the built-in page is removed.</p>
+      </div>
+    ` : ''}
     <header class="editor-pane-head editor-page-head">
       <div class="editor-page-title-block">
         <input class="editor-page-title-input" type="text" data-page-title value="${escapeHtml(page.title || '')}" placeholder="${escapeHtml(STRINGS.page.titlePlaceholder)}" aria-label="${escapeHtml(STRINGS.page.titleLabel)}" />
@@ -1797,6 +1823,11 @@ function bindPageEditorHeader(pane) {
 
   pane.querySelector('[data-history-undo]')?.addEventListener('click', () => pageHistory?.undo());
   pane.querySelector('[data-history-redo]')?.addEventListener('click', () => pageHistory?.redo());
+
+  pane.querySelector('[data-shadow-section]')?.addEventListener('click', (event) => {
+    const key = event.currentTarget.dataset.shadowSection;
+    if (key) loadSection(key);
+  });
 
   pane.querySelector('[data-publish-toggle]')?.addEventListener('click', () => {
     const page = editorState.activePage;
