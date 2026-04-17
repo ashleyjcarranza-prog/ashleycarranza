@@ -78,9 +78,25 @@ export async function getSiteData() {
   return siteDataPromise;
 }
 
+function normalizeNavKey(href) {
+  return String(href || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\/+$/, '')
+    .replace(/^$/, '/');
+}
+
 export function getNavigation(site = {}) {
   const navigation = Array.isArray(site.navigation) && site.navigation.length ? site.navigation : defaultNavigation;
-  return navigation.map((item) => ({
+  const seen = new Set();
+  const deduped = [];
+  for (const item of navigation) {
+    const key = normalizeNavKey(item.href);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+  }
+  return deduped.map((item) => ({
     ...item,
     href: withBasePath(item.href)
   }));

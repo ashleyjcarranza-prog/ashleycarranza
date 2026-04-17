@@ -49,6 +49,26 @@ async function getLinksByGroup(env: AppBindings, groupName: LinkGroup) {
     .orderBy(asc(links.sortOrder), asc(links.label));
 }
 
+function normalizeNavHref(href: string) {
+  return String(href || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\/+$/, '')
+    .replace(/^$/, '/');
+}
+
+function dedupeNav(items: Array<{ label: string; href: string }>) {
+  const seen = new Set<string>();
+  const out: Array<{ label: string; href: string }> = [];
+  for (const item of items) {
+    const key = normalizeNavHref(item.href);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
 function heroLinksToPublic(records: LinkRecord[]) {
   return records
     .filter((record) => record.visible)
@@ -89,7 +109,7 @@ export async function getManagedSite(env: AppBindings, requestUrl: string) {
 
   const navPages = await getNavPages(env);
   const pageNavItems = navPages.map((p) => ({ label: p.title, href: p.slug }));
-  const mergedNav = [...(base.navigation || []), ...pageNavItems];
+  const mergedNav = dedupeNav([...(base.navigation || []), ...pageNavItems]);
 
   return {
     ...base,
