@@ -1,6 +1,6 @@
 import { renderBlocks } from '../core/blocks.js';
 
-export function createEditorCanvas({ root, onSelect, onEdit, onRequestImage, onAddBelow }) {
+export function createEditorCanvas({ root, onSelect, onEdit, onRequestImage, onAddBelow, onAttachField }) {
   if (!root) throw new Error('createEditorCanvas: root element required');
   root.classList.add('editor-canvas');
   root.setAttribute('role', 'region');
@@ -94,28 +94,37 @@ export function createEditorCanvas({ root, onSelect, onEdit, onRequestImage, onA
   }
 
   function bindContentEditable(el, blockId) {
-    el.addEventListener('input', () => {
-      if (!blockId) return;
-      const field = el.dataset.edit;
-      const value = el.innerText.replace(/\u00a0/g, ' ');
-      isUpdatingFromEdit = true;
-      try {
-        if (typeof onEdit === 'function') onEdit({ blockId, field, value });
-      } finally {
-        isUpdatingFromEdit = false;
+    const field = el.dataset.edit;
+    const isHtmlField = typeof field === 'string' && field.toLowerCase().endsWith('html');
+
+    if (isHtmlField) {
+      if (typeof onAttachField === 'function') {
+        onAttachField({ element: el, blockId, field });
       }
-    });
-    el.addEventListener('paste', (event) => {
-      event.preventDefault();
-      const text = (event.clipboardData || window.clipboardData)?.getData('text/plain') || '';
-      document.execCommand('insertText', false, text);
-    });
-    el.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' && el.tagName === 'H1') {
+    } else {
+      el.addEventListener('input', () => {
+        if (!blockId) return;
+        const value = el.innerText.replace(/\u00a0/g, ' ');
+        isUpdatingFromEdit = true;
+        try {
+          if (typeof onEdit === 'function') onEdit({ blockId, field, value });
+        } finally {
+          isUpdatingFromEdit = false;
+        }
+      });
+      el.addEventListener('paste', (event) => {
         event.preventDefault();
-        el.blur();
-      }
-    });
+        const text = (event.clipboardData || window.clipboardData)?.getData('text/plain') || '';
+        document.execCommand('insertText', false, text);
+      });
+      el.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && el.tagName === 'H1') {
+          event.preventDefault();
+          el.blur();
+        }
+      });
+    }
+
     el.addEventListener('focus', () => {
       const id = el.closest('[data-block-wrap]')?.dataset.blockWrap;
       if (id) handleSelect(id);

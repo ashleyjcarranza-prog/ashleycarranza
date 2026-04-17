@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { sanitizeHtml } from './sanitize';
 
 export const linkGroupSchema = z.enum(['hero_cta', 'professional', 'social']);
 export type LinkGroup = z.infer<typeof linkGroupSchema>;
@@ -217,7 +218,12 @@ const heroBlockData = z.object({
 
 const textBlockData = z.object({
   heading: z.string().trim().max(200).default(''),
-  body: z.string().trim().max(8000).default('')
+  body: z.string().trim().max(8000).default(''),
+  bodyHtml: z
+    .string()
+    .max(20_000)
+    .default('')
+    .transform((value) => (value ? sanitizeHtml(value) : ''))
 });
 
 const imageBlockData = z.object({

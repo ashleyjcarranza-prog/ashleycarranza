@@ -6,6 +6,8 @@ import { createAutosave } from './admin/autosave.js';
 import { createHistory, bindUndoHotkeys } from './admin/history.js';
 import { BLOCK_TYPES, openBlockPicker } from './admin/block-picker.js';
 import { STRINGS } from './admin/strings.js';
+import { createMediaDrawer } from './admin/media-drawer.js';
+import { attachRichtext } from './admin/richtext.js';
 
 // ── State ──
 
@@ -816,62 +818,51 @@ function applyImageToField(path, url, sectionKey) {
   if (dropImg) dropImg.src = resolveImagePreview(url);
 }
 
-// ── Media Modal ──
+// ── Media Drawer ──
+
+let mediaDrawer = null;
+
+function ensureMediaDrawer() {
+  if (mediaDrawer) return mediaDrawer;
+  mediaDrawer = createMediaDrawer({
+    assetUrl: (p) => resolveImagePreview(p),
+    fetchItems: async () => {
+      const data = await api('/api/admin/media');
+      editorState.mediaLibrary = Array.isArray(data.items) ? data.items : [];
+      return { items: editorState.mediaLibrary, tags: data.tags || [] };
+    },
+    uploadFile: async (file) => {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await api('/api/admin/media', { method: 'POST', body: form });
+      const url = res.item?.path || '';
+      if (res.item) {
+        editorState.mediaLibrary = [res.item, ...editorState.mediaLibrary.filter((m) => m.path !== url)];
+      }
+      return res.item;
+    },
+    addTag: async (path, tag) => {
+      await api('/api/admin/media/tags', { method: 'POST', body: JSON.stringify({ path, tag }) });
+    },
+    removeTag: async (path, tag) => {
+      await api('/api/admin/media/tags', { method: 'DELETE', body: JSON.stringify({ path, tag }) });
+    }
+  });
+  return mediaDrawer;
+}
 
 function openMediaModal(path, sectionKey) {
   mediaPickerContext = { path, sectionKey };
-  const modal = document.getElementById('editor-media-modal');
-  modal.hidden = false;
-  renderMediaTab('library');
-}
-
-function closeMediaModal() {
-  document.getElementById('editor-media-modal').hidden = true;
-  mediaPickerContext = null;
-}
-
-function renderMediaTab(tab) {
-  const body = document.getElementById('editor-modal-body');
-  document.querySelectorAll('.editor-modal-tab').forEach((t) => {
-    t.classList.toggle('is-active', t.dataset.modalTab === tab);
-  });
-
-  if (tab === 'library') {
-    if (!editorState.mediaLibrary.length) {
-      body.innerHTML = '<p style="color:var(--secondary)">No images in library yet. Upload one first.</p>';
-      return;
-    }
-    body.innerHTML = `<div class="editor-media-grid">${editorState.mediaLibrary.map((m) =>
-      `<button class="editor-media-tile" type="button" data-pick-media="${escapeHtml(m.path)}">
-        <img src="${escapeHtml(resolveImagePreview(m.path))}" alt="${escapeHtml(m.label || '')}" />
-      </button>`
-    ).join('')}</div>`;
-
-    body.querySelectorAll('[data-pick-media]').forEach((tile) => {
-      tile.addEventListener('click', () => {
-        if (!mediaPickerContext) return;
-        applyImageToField(mediaPickerContext.path, tile.dataset.pickMedia, mediaPickerContext.sectionKey);
-        closeMediaModal();
-      });
-    });
-  } else {
-    body.innerHTML = `
-      <div style="display:grid;gap:0.85rem;max-width:360px">
-        <div class="editor-field">
-          <label>Choose image file</label>
-          <input type="file" accept="image/*" id="editor-modal-file" style="padding:0.4rem" />
-        </div>
-        <button type="button" class="ac-btn btn-sm" id="editor-modal-upload-btn">Upload Image</button>
-      </div>`;
-
-    document.getElementById('editor-modal-upload-btn')?.addEventListener('click', async () => {
-      const file = document.getElementById('editor-modal-file')?.files?.[0];
-      if (!file) return;
+  const drawer = ensureMediaDrawer();
+  drawer.setHandlers({
+    onPick: (url) => {
       if (!mediaPickerContext) return;
-      await uploadFile(file, mediaPickerContext.path, mediaPickerContext.sectionKey);
-      closeMediaModal();
-    });
-  }
+      applyImageToField(mediaPickerContext.path, url, mediaPickerContext.sectionKey);
+      drawer.close();
+    },
+    onClose: () => { mediaPickerContext = null; }
+  });
+  drawer.open();
 }
 
 // ── Pane / Section Rendering ──
@@ -1042,7 +1033,13 @@ function renderBlockFields(block) {
             <div class="editor-field"><label>Alt</label><input data-gallery-field="alt" data-gallery-idx="${i}" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(img.alt || '')}" /></div>
             <div class="editor-field"><label>Caption</label><input data-gallery-field="caption" data-gallery-idx="${i}" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(img.caption || '')}" /></div>
           </div>`).join('')}</div>
-        <button type="button" class="btn-outline btn-sm" data-add-gallery="${escapeHtml(bid)}">+ Add Image</button>`;
+        <div class="editor-field-actions">
+          <button type="button" class="btn-outline btn-sm" data-add-gallery="${escapeHtml(bid)}">+ Add Image</button>
+          <label class="btn-outline btn-sm editor-upload-label">
+            <input type="file" accept="image/*" multiple hidden data-multi-upload="gallery" data-block-id="${escapeHtml(bid)}" />
+            <i class="bi bi-cloud-arrow-up"></i> Upload photos
+          </label>
+        </div>`;
     case 'cards':
       return `
         <div class="editor-field"><label>Cards</label><span class="editor-helper">Add cards to the grid.</span></div>
@@ -1057,7 +1054,13 @@ function renderBlockFields(block) {
             <div class="editor-field"><label>Description</label><textarea data-card-field="description" data-card-idx="${i}" data-block-id="${escapeHtml(bid)}" rows="2">${escapeHtml(card.description || '')}</textarea></div>
             <div class="editor-field"><label>Link</label><input data-card-field="href" data-card-idx="${i}" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(card.href || '')}" /></div>
           </div>`).join('')}</div>
-        <button type="button" class="btn-outline btn-sm" data-add-card="${escapeHtml(bid)}">+ Add Card</button>`;
+        <div class="editor-field-actions">
+          <button type="button" class="btn-outline btn-sm" data-add-card="${escapeHtml(bid)}">+ Add Card</button>
+          <label class="btn-outline btn-sm editor-upload-label">
+            <input type="file" accept="image/*" multiple hidden data-multi-upload="cards" data-block-id="${escapeHtml(bid)}" />
+            <i class="bi bi-cloud-arrow-up"></i> Upload photos
+          </label>
+        </div>`;
     case 'cta':
       return `
         <div class="editor-field"><label>Heading</label><input data-block-field="heading" data-block-id="${escapeHtml(bid)}" value="${escapeHtml(d.heading || '')}" /></div>
@@ -1444,6 +1447,11 @@ function renderPageEditor() {
       <div class="editor-pane-actions">
         <button class="btn-outline btn-sm" type="button" data-history-undo title="Undo (Cmd-Z)" disabled><i class="bi bi-arrow-counterclockwise"></i><span class="sr-only">Undo</span></button>
         <button class="btn-outline btn-sm" type="button" data-history-redo title="Redo (Cmd-Shift-Z)" disabled><i class="bi bi-arrow-clockwise"></i><span class="sr-only">Redo</span></button>
+        <button type="button" class="editor-publish-pill ${page.published ? 'is-live' : 'is-draft'}" data-publish-toggle aria-pressed="${page.published ? 'true' : 'false'}">
+          <span class="editor-publish-dot"></span>
+          <span class="editor-publish-label">${escapeHtml(page.published ? STRINGS.page.publishedOnTitle : STRINGS.page.publishedOffTitle)}</span>
+          <small>${escapeHtml(page.published ? STRINGS.page.publishedOnNote : STRINGS.page.publishedOffNote)}</small>
+        </button>
         ${!isNew ? `<a class="btn-outline btn-sm" href="${escapeHtml(page.slug)}" target="_blank" rel="noopener">${escapeHtml(page.published ? STRINGS.page.viewLive : STRINGS.page.viewDraft)}</a>` : ''}
         ${!isNew ? `<button class="btn-outline btn-sm" type="button" data-delete-page="${escapeHtml(page.id)}" style="color:#c23616">${escapeHtml(STRINGS.page.deletePage)}</button>` : ''}
       </div>
@@ -1485,7 +1493,14 @@ function renderPageEditor() {
       const path = block.type === 'hero' ? `block.${id}.image` : `block.${id}.src`;
       openMediaModal(path, 'page-blocks');
     },
-    onAddBelow: (id) => openSectionPickerAt(document.querySelector(`[data-block-wrap="${id}"]`) || canvasRoot, id)
+    onAddBelow: (id) => openSectionPickerAt(document.querySelector(`[data-block-wrap="${id}"]`) || canvasRoot, id),
+    onAttachField: ({ element, blockId, field }) => {
+      attachRichtext(element, {
+        onEdit: ({ html }) => {
+          updateBlockField(blockId, field, html);
+        }
+      });
+    }
   });
   pageCanvas.setBlocks(editorState.pageBlocks, { activeId: editorState.activeBlockId });
 
@@ -1702,6 +1717,44 @@ function bindSideFieldEvents(panel) {
     });
   });
 
+  panel.querySelectorAll('[data-multi-upload]').forEach((input) => {
+    input.addEventListener('change', async () => {
+      const kind = input.dataset.multiUpload;
+      const bid = input.dataset.blockId;
+      const files = Array.from(input.files || []);
+      input.value = '';
+      if (!files.length || !bid) return;
+      const block = editorState.pageBlocks.find((b) => b.id === bid);
+      if (!block) return;
+      showBanner('info', `Uploading ${files.length} photo${files.length === 1 ? '' : 's'}…`);
+      try {
+        for (const file of files) {
+          const form = new FormData();
+          form.append('file', file);
+          const res = await api('/api/admin/media', { method: 'POST', body: form });
+          const url = res.item?.path || '';
+          if (!url) continue;
+          if (res.item) {
+            editorState.mediaLibrary = [res.item, ...editorState.mediaLibrary.filter((m) => m.path !== url)];
+          }
+          if (kind === 'gallery') {
+            if (!block.data.images) block.data.images = [];
+            block.data.images.push({ src: url, alt: '', caption: '' });
+          } else if (kind === 'cards') {
+            if (!block.data.cards) block.data.cards = [];
+            block.data.cards.push({ image: url, title: '', description: '', href: '' });
+          }
+        }
+        fullCanvasRefresh();
+        markPageMutated({ blockId: bid });
+        renderSidePanel();
+        showBanner('success', 'Photos uploaded.');
+      } catch (err) {
+        showBanner('danger', err.message || 'Upload failed.');
+      }
+    });
+  });
+
   bindDropZones(panel, 'page-blocks');
 }
 
@@ -1726,6 +1779,24 @@ function bindPageEditorHeader(pane) {
 
   pane.querySelector('[data-history-undo]')?.addEventListener('click', () => pageHistory?.undo());
   pane.querySelector('[data-history-redo]')?.addEventListener('click', () => pageHistory?.redo());
+
+  pane.querySelector('[data-publish-toggle]')?.addEventListener('click', () => {
+    const page = editorState.activePage;
+    if (!page) return;
+    const next = !page.published;
+    if (next && !page.id) {
+      showBanner('warning', 'Save the page first, then flip this to Published.');
+      return;
+    }
+    if (!next) {
+      const ok = confirm('Switch this page back to Draft? Visitors will no longer see it.');
+      if (!ok) return;
+    }
+    page.published = next;
+    editorState.pageDirty = true;
+    if (pageAutosave) pageAutosave.schedule({ immediate: true });
+    renderPageEditor();
+  });
 
   pane.querySelector('[data-add-section]')?.addEventListener('click', (event) => {
     openSectionPickerAt(event.currentTarget, null);
@@ -1851,13 +1922,6 @@ async function bootstrap() {
     setupLogout();
     setupBeforeUnload();
 
-    document.getElementById('editor-modal-close')?.addEventListener('click', closeMediaModal);
-    document.querySelectorAll('.editor-modal-tab').forEach((tab) => {
-      tab.addEventListener('click', () => renderMediaTab(tab.dataset.modalTab));
-    });
-    document.getElementById('editor-media-modal')?.addEventListener('click', (e) => {
-      if (e.target.id === 'editor-media-modal') closeMediaModal();
-    });
   } catch (err) {
     console.error(err);
     document.getElementById('editor-pane').innerHTML =

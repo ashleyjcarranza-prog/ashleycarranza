@@ -8,7 +8,7 @@ import { getAdminAnalytics } from '../lib/analytics';
 import { getManagedAbout, getManagedLegal, getManagedProducts, getManagedSite, upsertDocument } from '../lib/content';
 import { getDb, nowIso, type AppBindings } from '../lib/db';
 import { adminSessions, links, speakingItems } from '../lib/db/schema';
-import { listImageLibrary, uploadImage } from '../lib/media';
+import { addMediaTag, listAllMediaTags, listImageLibrary, removeMediaTag, uploadImage } from '../lib/media';
 import {
   aboutDocumentSchema,
   authSettingsInputSchema,
@@ -185,6 +185,44 @@ adminApi.post('/media', async (c) => {
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Unable to upload image.' }, 400);
   }
+});
+
+adminApi.get('/media/tags', async (c) => c.json({ tags: await listAllMediaTags(c.env) }));
+
+adminApi.post('/media/tags', async (c) => {
+  const body = await c.req.json().catch(() => null);
+  if (!body || typeof body.path !== 'string' || typeof body.tag !== 'string') {
+    return c.json({ error: 'Path and tag are required.' }, 400);
+  }
+  try {
+    const item = await addMediaTag(c.env, body.path, body.tag);
+    await recordAudit(c.env, {
+      actorEmail: c.get('adminEmail'),
+      entityType: 'media',
+      entityId: body.path,
+      action: 'tag-add',
+      summary: `Tagged ${body.path} as "${item.tag}".`
+    });
+    return c.json({ success: true, item });
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : 'Unable to add tag.' }, 400);
+  }
+});
+
+adminApi.delete('/media/tags', async (c) => {
+  const body = await c.req.json().catch(() => null);
+  if (!body || typeof body.path !== 'string' || typeof body.tag !== 'string') {
+    return c.json({ error: 'Path and tag are required.' }, 400);
+  }
+  await removeMediaTag(c.env, body.path, body.tag);
+  await recordAudit(c.env, {
+    actorEmail: c.get('adminEmail'),
+    entityType: 'media',
+    entityId: body.path,
+    action: 'tag-remove',
+    summary: `Removed tag "${body.tag}" from ${body.path}.`
+  });
+  return c.json({ success: true });
 });
 
 adminApi.patch('/auth-settings', async (c) => {

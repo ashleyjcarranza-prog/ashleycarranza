@@ -1,5 +1,5 @@
-import { eq } from 'drizzle-orm';
-import { contentDocuments } from './db/schema';
+import { and, eq, inArray } from 'drizzle-orm';
+import { contentDocuments, mediaTags, pages } from './db/schema';
 import { getDb, nowIso, type AppBindings } from './db';
 import { mediaLibraryDocumentSchema } from './validation';
 
@@ -100,9 +100,99 @@ export async function listImageLibrary(env: AppBindings, requestUrl: string) {
   const merged = [...(baseLibrary.items || []), ...(savedLibrary.items || []), ...uploadedItems];
   const deduped = merged.filter((item, index) => merged.findIndex((entry) => entry.path === item.path) === index);
 
+  const [tagMap, usageMap] = await Promise.all([
+    readAllTagsMap(env, deduped.map((m) => m.path)),
+    computeUsageMap(env, deduped.map((m) => m.path))
+  ]);
+
+  const items = deduped.map((m) => ({
+    ...m,
+    tags: tagMap.get(m.path) || [],
+    usageCount: usageMap.get(m.path) || 0
+  }));
+
+  const tagSet = new Set<string>();
+  for (const tags of tagMap.values()) for (const t of tags) tagSet.add(t);
+
   return {
-    items: deduped
+    items,
+    tags: Array.from(tagSet).sort()
   };
+}
+
+async function readAllTagsMap(env: AppBindings, paths: string[]) {
+  const map = new Map<string, string[]>();
+  if (!paths.length) return map;
+  const db = getDb(env);
+  const rows = await db.select().from(mediaTags).where(inArray(mediaTags.path, paths));
+  for (const row of rows) {
+    const list = map.get(row.path) || [];
+    list.push(row.tag);
+    map.set(row.path, list);
+  }
+  return map;
+}
+
+async function computeUsageMap(env: AppBindings, paths: string[]) {
+  const map = new Map<string, number>();
+  if (!paths.length) return map;
+  const pathSet = new Set(paths);
+  const db = getDb(env);
+  const rows = await db.select({ blocks: pages.blocks }).from(pages);
+  for (const row of rows) {
+    try {
+      const blocks = JSON.parse(row.blocks || '[]');
+      const touched = new Set<string>();
+      for (const block of blocks) {
+        collectImagePathsFromBlock(block, touched);
+      }
+      for (const path of touched) {
+        if (pathSet.has(path)) map.set(path, (map.get(path) || 0) + 1);
+      }
+    } catch { /* skip bad JSON */ }
+  }
+  return map;
+}
+
+function collectImagePathsFromBlock(block: unknown, out: Set<string>) {
+  if (!block || typeof block !== 'object') return;
+  const data = (block as { data?: Record<string, unknown> }).data || {};
+  const push = (v: unknown) => { if (typeof v === 'string' && v) out.add(v); };
+  push(data.image);
+  push(data.src);
+  if (Array.isArray(data.images)) for (const img of data.images) push((img as { src?: unknown })?.src);
+  if (Array.isArray(data.cards)) for (const card of data.cards) push((card as { image?: unknown })?.image);
+}
+
+export async function addMediaTag(env: AppBindings, path: string, tag: string) {
+  const db = getDb(env);
+  const trimmed = tag.trim().toLowerCase();
+  if (!trimmed) throw new Error('Tag cannot be empty.');
+  if (trimmed.length > 40) throw new Error('Tags must be 40 characters or fewer.');
+  try {
+    await db.insert(mediaTags).values({
+      id: crypto.randomUUID(),
+      path,
+      tag: trimmed,
+      createdAt: nowIso()
+    });
+  } catch {
+    /* duplicate; ignore */
+  }
+  return { path, tag: trimmed };
+}
+
+export async function removeMediaTag(env: AppBindings, path: string, tag: string) {
+  const db = getDb(env);
+  await db.delete(mediaTags).where(and(eq(mediaTags.path, path), eq(mediaTags.tag, tag.trim().toLowerCase())));
+}
+
+export async function listAllMediaTags(env: AppBindings) {
+  const db = getDb(env);
+  const rows = await db.select().from(mediaTags);
+  const tagSet = new Set<string>();
+  for (const row of rows) tagSet.add(row.tag);
+  return Array.from(tagSet).sort();
 }
 
 export async function uploadImage(env: AppBindings, file: File) {

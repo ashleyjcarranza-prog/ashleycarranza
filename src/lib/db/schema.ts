@@ -67,6 +67,13 @@ export const pages = sqliteTable('pages', {
   updatedAt: text('updated_at').notNull()
 });
 
+export const mediaTags = sqliteTable('media_tags', {
+  id: text('id').primaryKey(),
+  path: text('path').notNull(),
+  tag: text('tag').notNull(),
+  createdAt: text('created_at').notNull()
+});
+
 export const auditLog = sqliteTable('audit_log', {
   id: text('id').primaryKey(),
   actorEmail: text('actor_email').notNull(),

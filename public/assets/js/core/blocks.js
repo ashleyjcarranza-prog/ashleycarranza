@@ -63,11 +63,16 @@ const BLOCK_RENDERERS = {
   text(data, ctx) {
     const heading = data.heading || '';
     const body = data.body || '';
+    const bodyHtml = typeof data.bodyHtml === 'string' ? data.bodyHtml : '';
+    const bodyField = bodyHtml ? 'bodyHtml' : 'body';
+    const bodyInner = bodyHtml
+      ? bodyHtml
+      : (body ? renderParagraphs(body) : (ctx?.editable ? `<p class="block-placeholder">${escapeHtml(PLACEHOLDERS.textBody)}</p>` : ''));
     return `
       <section class="block-text">
         <div class="container block-text-inner">
           ${(heading || ctx?.editable) ? `<h2 class="block-text-heading"${editableAttrs(ctx, 'heading')}${placeholderAttr(ctx, PLACEHOLDERS.textHeading)}>${escapeHtml(heading)}</h2>` : ''}
-          <div class="block-text-body"${editableAttrs(ctx, 'body')}${placeholderAttr(ctx, PLACEHOLDERS.textBody)}>${body ? renderParagraphs(body) : (ctx?.editable ? `<p class="block-placeholder">${escapeHtml(PLACEHOLDERS.textBody)}</p>` : '')}</div>
+          <div class="block-text-body"${editableAttrs(ctx, bodyField)}${placeholderAttr(ctx, PLACEHOLDERS.textBody)}>${bodyInner}</div>
         </div>
       </section>`;
   },
